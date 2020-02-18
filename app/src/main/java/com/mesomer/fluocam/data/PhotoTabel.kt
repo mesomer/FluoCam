@@ -5,6 +5,7 @@ object PhotoTabel{
 
     val ID="_id"
     val concentrate = "concentrate"
-    val photo = "photo"
+    val url = "url"
+    val nickname="nickname"
 
 }
