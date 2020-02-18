@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">FluoCam</string>
+    <string name="main_button1">一</string>
+    <string name="main_button2">二</string>
+    <string name="main_button3">三</string>
+    <string name="main_button4">四</string>
+</resources>
