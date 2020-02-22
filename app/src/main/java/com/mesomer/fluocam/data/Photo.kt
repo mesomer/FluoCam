@@ -5,4 +5,5 @@ data class Photo(val map:MutableMap<String,Any?>) {
     val _id by map
     val url by map
     val concentrate by map
+    val nickname by map
 }

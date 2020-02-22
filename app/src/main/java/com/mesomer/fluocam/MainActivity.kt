@@ -33,7 +33,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         button3.setOnClickListener {
-            Toast.makeText(this@MainActivity,"点击按钮三",Toast.LENGTH_LONG).show()
+            val intent = Intent(this@MainActivity,ShowAlbum::class.java)
+            startActivity(intent)
         }
 
         button4.setOnClickListener {

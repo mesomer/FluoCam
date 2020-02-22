@@ -2,6 +2,7 @@ package com.mesomer.fluocam.data
 
 import com.mesomer.fluocam.extention.MapToPair
 import org.jetbrains.anko.db.MapRowParser
+import org.jetbrains.anko.db.delete
 import org.jetbrains.anko.db.insert
 import org.jetbrains.anko.db.select
 
@@ -24,9 +25,12 @@ class MDataBase{
                 override fun parseRow(columns: Map<String, Any?>): Photo {
                     return Photo(columns.toMutableMap() )
                 }
-
             })
         }
+    }
+    //删除所有照片
+    fun deleteAllPhoto(){
+        databaseHelper.use { delete(PhotoTabel.NAME,null,null) }
     }
 
 }

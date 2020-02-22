@@ -164,16 +164,16 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
         requestCode: Int, permissions: Array<String>, grantResults: IntArray
     ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-            if (allPermissionsGranted()) {
-                viewFinder.post { startCamera() }
-            } else {
-                Toast.makeText(
-                    this,
-                    "Permissions not granted by the user.",
-                    Toast.LENGTH_SHORT
-                ).show()
-                finish()
-            }
+                if (allPermissionsGranted()) {
+                    viewFinder.post { startCamera() }
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Permissions not granted by the user.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    finish()
+                }
         }
     }
 
