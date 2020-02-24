@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:id="@+id/mark_form"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:text="组:"
+            android:textSize="20sp" />
+        <!-- 输入编组名称 -->
+        <EditText
+            android:id="@+id/group_num"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:hint="填写样品组号"
+            android:selectAllOnFocus="true" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:gravity="end"
+            android:layout_width="50dp"
+            android:layout_height="wrap_content"
+            android:text="浓度:"
+            android:textSize="20sp" />
+        <!-- 输入样品浓度 -->
+        <EditText
+            android:id="@+id/concentration"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:hint="标定样品需填写浓度"
+            android:selectAllOnFocus="true" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="10dp"
+            android:text="uM"
+            android:textSize="20sp" />
+    </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_horizontal"
+        android:paddingStart="50dp">
+        <RadioGroup android:id="@+id/sampletag"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center_horizontal">
+            <RadioButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/tobetested"
+                android:text="检测样"/>
+            <RadioButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/tested"
+                android:text="标定样"/>
+        </RadioGroup>
+    </LinearLayout>
+</LinearLayout>

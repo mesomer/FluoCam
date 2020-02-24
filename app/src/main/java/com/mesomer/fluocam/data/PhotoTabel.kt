@@ -6,6 +6,7 @@ object PhotoTabel{
     val ID="_id"
     val concentrate = "concentrate"
     val url = "url"
+    val group="group"
     val nickname="nickname"
 
 }

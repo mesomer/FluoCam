@@ -12,7 +12,7 @@ class MyDataBaseHelper(ctx: Context=FluoCamApplication.instance) : ManagedSQLite
         var VERSION=1
     }
     override fun onCreate(db: SQLiteDatabase?) {
-        db?.createTable(PhotoTabel.NAME,true,PhotoTabel.ID to INTEGER+ PRIMARY_KEY+ AUTOINCREMENT,PhotoTabel.concentrate to TEXT,PhotoTabel.url to TEXT,PhotoTabel.nickname to TEXT )
+        db?.createTable(PhotoTabel.NAME,true,PhotoTabel.ID to INTEGER+ PRIMARY_KEY+ AUTOINCREMENT,PhotoTabel.concentrate to TEXT,PhotoTabel.url to TEXT,PhotoTabel.group to TEXT,PhotoTabel.nickname to TEXT )
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
