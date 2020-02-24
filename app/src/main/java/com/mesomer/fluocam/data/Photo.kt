@@ -1,10 +1,12 @@
 package com.mesomer.fluocam.data
 
-data class Photo(val map:MutableMap<String,Any?>) {
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
-    val _id by map
-    val url by map
-    val concentrate by map
-    val nickname by map
-    val groupID by map
-}
+@Entity
+data class Photo(
+    @PrimaryKey(autoGenerate = true)
+    val id:Int?=null,
+    val name:String,
+    val concentration:String
+)

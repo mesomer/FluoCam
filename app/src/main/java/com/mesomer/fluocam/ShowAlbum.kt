@@ -13,14 +13,9 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.mesomer.fluocam.data.MDataBase
-import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MyGridVIew
 import kotlinx.android.synthetic.main.activity_show_album.*
-import kotlinx.android.synthetic.main.mark_window.*
-import org.jetbrains.anko.toast
 import java.io.File
-import java.text.ParsePosition
 
 private val REQUIRED_PERMISSIONS =
     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -126,14 +121,7 @@ class ShowAlbum : AppCompatActivity() {
         val MarkForm = layoutInflater.inflate(R.layout.mark_window, null)
 
         AlertDialog.Builder(this).setView(MarkForm).setPositiveButton("确认") { dialog, which ->
-           /* if (MDataBase.instance.havepath(path)){
-                Toast.makeText(this@ShowAlbum,"已存在",Toast.LENGTH_LONG).show()
-            }
-            else{
-                Toast.makeText(this@ShowAlbum,"不存在",Toast.LENGTH_LONG).show()
-                //val aphoto=Photo(mutableMapOf("_id" to "","url" to path,"cocentrate" to concentrate.text.toString(),"groupID" to groupnum.text.toString(),"nickname" to "233"))
-                //MDataBase.instance.savePhoto(aphoto)
-            }*/
+
         }
             .setNegativeButton("取消") { dialog, which ->
                 //取消操作
