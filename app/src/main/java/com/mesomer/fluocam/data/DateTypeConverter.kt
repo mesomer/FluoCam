@@ -5,7 +5,7 @@ import com.mesomer.fluocam.data.Photo
 
 class DateTypeConverter {
     @TypeConverter
-    fun havePhoto(photo: Photo?):Boolean{
-        return photo!=null
+    fun havePhoto(photo: Photo?): Boolean {
+        return photo != null
     }
 }

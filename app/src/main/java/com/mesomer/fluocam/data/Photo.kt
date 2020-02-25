@@ -6,7 +6,10 @@ import androidx.room.PrimaryKey
 @Entity
 data class Photo(
     @PrimaryKey(autoGenerate = true)
-    val id:Int?=null,
-    val name:String,
-    val concentration:String
+    val id: Int? = null,
+    val name: String,
+    val concentration: String,
+    val groupID:String,
+    val IsStander:Boolean,
+    val path:String
 )

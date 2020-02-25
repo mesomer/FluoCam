@@ -14,11 +14,15 @@ import android.view.View.MeasureSpec.makeMeasureSpec
 import androidx.core.content.ContextCompat.getSystemService
 import android.icu.lang.UCharacter.GraphemeClusterBreak.T
 import android.view.View
+import com.mesomer.databasetest.data.AppDatabase
+import com.mesomer.databasetest.data.MyDAO
 
 
 class ShowResult : AppCompatActivity() {
-    private var myHeigth=1500
-    private var myWeight=1500
+    private var myHeigth=400
+    private var myWeight=400
+    private var db: AppDatabase?=null
+    private var myDao: MyDAO?=null
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_show_result)
@@ -26,6 +30,8 @@ class ShowResult : AppCompatActivity() {
        // val w = makeMeasureSpec(0, UNSPECIFIED)
         //val h = makeMeasureSpec(0, UNSPECIFIED)
         //myAxis.measure(w, h)
+        db = AppDatabase.getAppDataBase(context = this)
+        myDao = db?.myDao()
         axis.getWidthAndHeight(myHeigth,myWeight)
         axis.setAxis(Point(10,10),50,50)
     }
