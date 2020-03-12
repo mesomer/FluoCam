@@ -63,4 +63,6 @@ dependencies {
 
 // Testing
     androidTestImplementation "androidx.arch.core:core-testing:$rootProject.coreTestingVersion"
+//科学绘图库
+    implementation "com.github.PhilJay:MPAndroidChart:v3.1.0"
 }

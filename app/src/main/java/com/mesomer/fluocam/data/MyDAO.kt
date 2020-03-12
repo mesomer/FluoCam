@@ -1,6 +1,7 @@
 package com.mesomer.databasetest.data
 
 import androidx.room.*
+import com.mesomer.fluocam.ShowResult
 import com.mesomer.fluocam.data.Photo
 
 @Dao
@@ -16,6 +17,13 @@ interface MyDAO {
 
     @Query("SELECT *FROM Photo WHERE path==:path")
     fun getPhotoByurl(path: String): List<Photo>
+
+    @Query("SELECT *FROM Photo")
+    fun getAllPhoto():List<Photo>
+    @Query("SELECT DISTINCT groupID FROM Photo")
+    fun getAllGroupID():List<String>
+    @Query("SELECT *FROM Photo where groupID==:groupID")
+    fun getPhotoByGroupID(groupID:String):List<Photo>
 
 
 }

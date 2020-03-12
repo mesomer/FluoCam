@@ -7,11 +7,10 @@
     android:orientation="vertical"
     tools:context=".ShowResult">
 
-    <com.mesomer.fluocam.myview.MyAxis
-        android:id="@+id/myAxis"
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/chart"
         android:layout_width="match_parent"
-        android:layout_height="400dp"
-        />
+        android:layout_height="match_parent"/>
      <ExpandableListView
          android:id="@+id/expand_list"
          android:layout_width="match_parent"

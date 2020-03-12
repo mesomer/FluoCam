@@ -95,7 +95,8 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
         val imageCapture = ImageCapture(imageCaptureConfig)
         findViewById<ImageButton>(R.id.capture).setOnClickListener {
             val file = File(
-                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath(),
+                //Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath(),
+                externalMediaDirs.first(),
                 "${System.currentTimeMillis()}.jpg"
             )
 
