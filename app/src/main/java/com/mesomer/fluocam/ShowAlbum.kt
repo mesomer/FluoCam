@@ -76,7 +76,6 @@ class ShowAlbum : AppCompatActivity() {
 
     var names = ArrayList<String>()
     var paths = ArrayList<String>()
-    var realpaths=ArrayList<String>()
     private fun StartShowAlbum() {
         val adapter = object : BaseAdapter() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
@@ -104,12 +103,15 @@ class ShowAlbum : AppCompatActivity() {
         photogrid.adapter = adapter
         photogrid.onItemClickListener =
             AdapterView.OnItemClickListener { parent, view, position, id ->
-                val thisphoto=myDao!!.getPhotoByurl(realpaths[realpaths.size-position-1])
+                val thisphoto=myDao!!.getPhotoByurl(paths[paths.size-position-1])
                 val havePhoto=(thisphoto.size!=0)
-                var thephoto=Photo(0,"0","0","0",true,realpaths[realpaths.size-position-1])
-                Log.e("realpath",realpaths[realpaths.size-position-1])
+                var thephoto=Photo(paths[paths.size-position-1],"0","0","0",true)
+
+
+                Log.i("path","path:"+paths[paths.size-position-1])
+
                 for (photo in thisphoto){
-                    if (photo.path==realpaths[realpaths.size-position-1]){
+                    if (photo.path==paths[paths.size-position-1]){
                         thephoto=photo
                     }
                 }
@@ -129,10 +131,9 @@ class ShowAlbum : AppCompatActivity() {
             val name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME))
             val desce = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DESCRIPTION))
             val path = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA))
-            val realpath=File(path).absolutePath
             names.add(name)
             paths.add(path)
-            realpaths.add(realpath)
+
         }
         cursor.close()
     }
@@ -154,7 +155,8 @@ class ShowAlbum : AppCompatActivity() {
 
         AlertDialog.Builder(this).setView(MarkForm).setPositiveButton("确认") { dialog, which ->
             if (havephoto){
-                Toast.makeText(this@ShowAlbum,"已经有了",Toast.LENGTH_LONG).show()
+                myDao?.updatePhoto(Photo(concentration = concentrationEdit.text.toString(),path=photo.path,name = "",groupID = groupEdit.text.toString(),IsStander = isStandarRatio.checkedRadioButtonId==R.id.tested))
+                Toast.makeText(this@ShowAlbum,"属性已更新",Toast.LENGTH_LONG).show()
                 //待完成
             }
             else
