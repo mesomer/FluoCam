@@ -1,11 +1,48 @@
 package com.mesomer.fluocam.camera
 
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.Point
 import com.mesomer.fluocam.myview.MyRec
 
 class RGBmap(bitmap:Bitmap,rectangle:MyRec){
-    val startX=rectangle.startX
-    val startY=rectangle.startY
-    val endX=rectangle.endX
-    val endY =rectangle.endY
+    private val startX=rectangle.startX
+    private val startY=rectangle.startY
+    private val endX=rectangle.endX
+    private val endY =rectangle.endY
+    private val myBitmap = bitmap
+    fun getRArray():ArrayList<Int>{
+        var RArray=ArrayList<Int>()
+        for (i in startX..endX){
+            for(j in startY..endY){
+                val red:Int
+                red=Color.red(myBitmap.getPixel(i,j))
+                RArray.add(red)
+            }
+        }
+        return RArray
+    }
+    fun getGArray():ArrayList<Int>{
+        var RArray=ArrayList<Int>()
+        for (i in startX..endX){
+            for(j in startY..endY){
+                val green:Int
+                green=Color.green(myBitmap.getPixel(i,j))
+                RArray.add(green)
+            }
+        }
+        return RArray
+    }
+    fun getBArray():ArrayList<Int>{
+        var BArray=ArrayList<Int>()
+        for (i in startX..endX){
+            for(j in startY..endY){
+                val blue:Int
+                blue=Color.blue(myBitmap.getPixel(i,j))
+                BArray.add(blue)
+            }
+        }
+        return BArray
+    }
+
 }

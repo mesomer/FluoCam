@@ -23,7 +23,9 @@ import com.github.mikephil.charting.data.LineDataSet
 import com.mesomer.databasetest.data.AppDatabase
 import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.adapter.MyExpandableAdapter
+import com.mesomer.fluocam.camera.RGBmap
 import com.mesomer.fluocam.data.Photo
+import com.mesomer.fluocam.myview.MyRec
 import java.io.File
 import java.text.ParsePosition
 import java.util.*
@@ -55,15 +57,11 @@ class ShowResult : AppCompatActivity() {
                         //获得符合条件的Photo()
                         val groupNum = msg.data.getInt(GROUP_NUM)
                         val photoReturn = myDao.getPhotoByGroupID(groupArrayList[groupNum])
+                        val Rec_area=MyRec(1560,2036,30,30)
                         for(photo in photoReturn){
                             val photoBitmap=Glide.with(this@ShowResult).asBitmap().load(File(photo.path)).submit().get()
-                            Log.i("bitmap","Bitmap.width="+photoBitmap.width.toString()+"Bitmap.heigth="+photoBitmap.height.toString())
-                            val pixel_1545_2022=photoBitmap.getPixel(1544,2022)
-                            val red=Color.red(pixel_1545_2022)
-                            val green=Color.green(pixel_1545_2022)
-                            val blue=Color.blue(pixel_1545_2022)
-                            val alpha=Color.alpha(pixel_1545_2022)
-                            Log.i("color","R="+red+",G="+green+" ,B="+blue+", A="+alpha)
+                            val greenArray=RGBmap(photoBitmap,Rec_area).getGArray()
+                           // Log.i("color","R="+red+",G="+green+" ,B="+blue+", A="+alpha)
                         }
                         //分类
                         runOnUiThread {
