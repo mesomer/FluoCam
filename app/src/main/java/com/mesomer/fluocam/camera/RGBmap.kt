@@ -11,7 +11,7 @@ class RGBmap(bitmap:Bitmap,rectangle:MyRec){
     private val endX=rectangle.endX
     private val endY =rectangle.endY
     private val myBitmap = bitmap
-    fun getRArray():ArrayList<Int>{
+    fun getRArray():Array<Int>{
         var RArray=ArrayList<Int>()
         for (i in startX..endX){
             for(j in startY..endY){
@@ -20,9 +20,9 @@ class RGBmap(bitmap:Bitmap,rectangle:MyRec){
                 RArray.add(red)
             }
         }
-        return RArray
+        return RArray.toTypedArray()
     }
-    fun getGArray():ArrayList<Int>{
+    fun getGArray():Array<Int>{
         var RArray=ArrayList<Int>()
         for (i in startX..endX){
             for(j in startY..endY){
@@ -31,9 +31,9 @@ class RGBmap(bitmap:Bitmap,rectangle:MyRec){
                 RArray.add(green)
             }
         }
-        return RArray
+        return RArray.toTypedArray()
     }
-    fun getBArray():ArrayList<Int>{
+    fun getBArray():Array<Int>{
         var BArray=ArrayList<Int>()
         for (i in startX..endX){
             for(j in startY..endY){
@@ -42,7 +42,7 @@ class RGBmap(bitmap:Bitmap,rectangle:MyRec){
                 BArray.add(blue)
             }
         }
-        return BArray
+        return BArray.toTypedArray()
     }
 
 }

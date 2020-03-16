@@ -26,10 +26,12 @@ import com.mesomer.fluocam.adapter.MyExpandableAdapter
 import com.mesomer.fluocam.camera.RGBmap
 import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MyRec
+import com.mesomer.fluocam.science.LinearRegression
 import java.io.File
 import java.text.ParsePosition
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.math.max
 
 const val GROUP_NUM="groupnum"
 class ShowResult : AppCompatActivity() {
@@ -58,14 +60,21 @@ class ShowResult : AppCompatActivity() {
                         val groupNum = msg.data.getInt(GROUP_NUM)
                         val photoReturn = myDao.getPhotoByGroupID(groupArrayList[groupNum])
                         val Rec_area=MyRec(1560,2036,30,30)
+                        val RGBvalue = ArrayList<Double>()
+                        val concentrationValue=ArrayList<Double>()
                         for(photo in photoReturn){
                             val photoBitmap=Glide.with(this@ShowResult).asBitmap().load(File(photo.path)).submit().get()
                             val greenArray=RGBmap(photoBitmap,Rec_area).getGArray()
-                           // Log.i("color","R="+red+",G="+green+" ,B="+blue+", A="+alpha)
+                            val meanGreen = (greenArray.sum()/greenArray.size).toDouble()
+                            RGBvalue.add(meanGreen)
+                            concentrationValue.add(photo.concentration.toDouble())
                         }
+                        val RGBarray=RGBvalue.toTypedArray()
+                        val concentrationArray=concentrationValue.toTypedArray()
+                        val linearRegression = LinearRegression(RGBarray,concentrationArray)
                         //分类
                         runOnUiThread {
-                            //画统计图
+                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!)
                         }
                     }
                     if (msg?.what == 0x111) {
@@ -97,6 +106,32 @@ class ShowResult : AppCompatActivity() {
         }
     }
 
+    private fun drawLine(Slope:Double,Intercept:Double,minX:Double,maxX:Double){
+        var mydata = ArrayList<Pair<Double, Double>>()
+        val minx=minX
+        val maxx=maxX
+        val slope=Slope
+        val intercept=Intercept
+        var startX=0.0
+        var endX=0.0
+        if ((minx-0.2*minx)>0){
+            startX=(minx-0.2*minx)
+        }
+        endX=(maxx+0.2* maxx)
+        mydata.add(Pair(startX,startX*slope+intercept))
+        mydata.add(Pair(endX,endX*slope+intercept))
+        var entries = ArrayList<Entry>()
+        for (point in mydata) {
+            entries.add(Entry(point.first.toFloat(), point.second.toFloat()))
+        }
+        var datset = LineDataSet(entries, "Lable")
+        datset.setColor(Color.BLACK)
+        datset.setDrawCircles(false)
+        var linedata = LineData(datset)
+        chart.data = linedata
+        chart.invalidate()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_show_result)
@@ -118,10 +153,6 @@ class ShowResult : AppCompatActivity() {
                 sendmessage(0x111)
             }
         },100)
-
-
-        //画图
-        drawLine() 
 
     }
 
@@ -145,22 +176,4 @@ class ShowResult : AppCompatActivity() {
         msg.data = bundle
         myThread.mHandler.sendMessage(msg)
     }
-    fun drawLine(){
-        var mydata = ArrayList<Pair<Float, Float>>()
-        mydata.add(Pair(0f, 0f))
-        mydata.add(Pair(1f, 1f))
-        mydata.add(Pair(2f, 2f))
-        mydata.add(Pair(5f, 5f))
-        mydata.add(Pair(10f, 15f))
-        var entries = ArrayList<Entry>()
-        for (point in mydata) {
-            entries.add(Entry(point.first, point.second))
-        }
-        var datset = LineDataSet(entries, "Lable")
-        datset.setColor(Color.BLACK)
-        var linedata = LineData(datset)
-        chart.data = linedata
-        chart.invalidate()
-    }
-
 }
