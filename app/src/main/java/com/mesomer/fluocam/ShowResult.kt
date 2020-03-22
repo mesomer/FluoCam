@@ -28,6 +28,8 @@ import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MyRec
 import com.mesomer.fluocam.science.LinearRegression
 import java.io.File
+import java.math.RoundingMode
+import java.text.DecimalFormat
 import java.text.ParsePosition
 import java.util.*
 import kotlin.collections.ArrayList
@@ -63,29 +65,40 @@ class ShowResult : AppCompatActivity() {
                         val RGBvalue = ArrayList<Double>()
                         val concentrationValue=ArrayList<Double>()
                         for(photo in photoReturn){
-                            val photoBitmap=Glide.with(this@ShowResult).asBitmap().load(File(photo.path)).submit().get()
-                            val greenArray=RGBmap(photoBitmap,Rec_area).getGArray()
-                            val meanGreen = (greenArray.sum()/greenArray.size).toDouble()
-                            RGBvalue.add(meanGreen)
-                            concentrationValue.add(photo.concentration.toDouble())
+                            if(photo.IsStander) {
+                                val photoBitmap =
+                                    Glide.with(this@ShowResult).asBitmap().load(File(photo.path))
+                                        .submit().get()
+                                val greenArray = RGBmap(photoBitmap, Rec_area).getGArray()
+                                val meanGreen = (greenArray.sum() / greenArray.size).toDouble()
+                                Log.i(
+                                    "RGBmap",
+                                    "meangreen=${meanGreen},greenarray.size=${greenArray.size}"
+                                )
+                                RGBvalue.add(meanGreen)
+                                concentrationValue.add(photo.concentration.toDouble())
+                                Log.i("RGBmap", "concentration=${photo.concentration.toDouble()}")
+                            }
                         }
                         val RGBarray=RGBvalue.toTypedArray()
                         val concentrationArray=concentrationValue.toTypedArray()
-                        val linearRegression = LinearRegression(RGBarray,concentrationArray)
+                        val linearRegression = LinearRegression(concentrationArray,RGBarray)
                         //分类
                         runOnUiThread {
-                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!)
+                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
+                            Log.i("linear","a="+linearRegression.a.toString()+" b="+linearRegression.b.toString()+" R^2="+linearRegression.R_2.toString() )
                         }
                     }
-                    if (msg?.what == 0x111) {
+                    //初始化列表
+                     if (msg?.what == 0x111) {
                         groupList = myDao.getAllGroupID()
                          groupArrayList = ArrayList<String>()
                          sampleArrayList = ArrayList<ArrayList<String>>()
                         //从数据库读信息
                         for (groupid in groupList) {
                             groupArrayList.add(groupid)
-                            var photoReturn = myDao.getPhotoByGroupID(groupid)
-                            var cocentrationArray = ArrayList<String>()
+                            val photoReturn = myDao.getPhotoByGroupID(groupid)
+                            val cocentrationArray = ArrayList<String>()
                             for (photo in photoReturn) {
                                 cocentrationArray.add(photo.concentration)
                             }
@@ -106,7 +119,7 @@ class ShowResult : AppCompatActivity() {
         }
     }
 
-    private fun drawLine(Slope:Double,Intercept:Double,minX:Double,maxX:Double){
+    private fun drawLine(Slope:Double,Intercept:Double,minX:Double,maxX:Double,a:Double,b:Double,Rsquare:Double){
         var mydata = ArrayList<Pair<Double, Double>>()
         val minx=minX
         val maxx=maxX
@@ -124,9 +137,13 @@ class ShowResult : AppCompatActivity() {
         for (point in mydata) {
             entries.add(Entry(point.first.toFloat(), point.second.toFloat()))
         }
-        var datset = LineDataSet(entries, "Lable")
-        datset.setColor(Color.BLACK)
+        val df = DecimalFormat("#.###")
+        df.roundingMode = RoundingMode.CEILING
+        var datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
+
+        datset.setColor(Color.GREEN)
         datset.setDrawCircles(false)
+
         var linedata = LineData(datset)
         chart.data = linedata
         chart.invalidate()

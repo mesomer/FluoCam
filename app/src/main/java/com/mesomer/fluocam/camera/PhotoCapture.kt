@@ -1,196 +1,271 @@
 package com.mesomer.fluocam.camera
 
+
 import android.Manifest
+import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Matrix
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.hardware.display.DisplayManager
+import android.media.MediaScannerConnection
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
-import android.os.Message
+import android.util.AttributeSet
+import android.util.DisplayMetrics
 import android.util.Log
-import android.util.Size
-import android.view.Surface
-import android.view.TextureView
-import android.view.ViewGroup
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.webkit.MimeTypeMap
 import android.widget.ImageButton
-import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.camera.view.TextureViewMeteringPointFactory
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toFile
 import androidx.lifecycle.LifecycleOwner
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.mesomer.fluocam.R
+import com.mesomer.fluocam.app.KEY_EVENT_ACTION
+import com.mesomer.fluocam.app.KEY_EVENT_EXTRA
 import java.io.File
-import java.lang.ref.WeakReference
+import java.lang.Math.max
+import java.lang.Math.min
 import java.nio.ByteBuffer
+import java.text.SimpleDateFormat
 import java.util.*
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 
-// This is an arbitrary number we are using to keep track of the permission
-// request. Where an app has multiple context for requesting permission,
-// this can help differentiate the different contexts.
+
+//跟踪权限请求
 private const val REQUEST_CODE_PERMISSIONS = 10
 
 // This is an array of all the permission specified in the manifest.
-private val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA,Manifest.permission.READ_EXTERNAL_STORAGE,Manifest.permission.WRITE_EXTERNAL_STORAGE)
+private val REQUIRED_PERMISSIONS = arrayOf(
+    Manifest.permission.CAMERA,
+    Manifest.permission.READ_EXTERNAL_STORAGE,
+    Manifest.permission.WRITE_EXTERNAL_STORAGE
+)
+
+/** Helper type alias used for analysis use case callbacks */
+typealias LumaListener = (luma: Double) -> Unit
 
 class PhotoCapture : AppCompatActivity(), LifecycleOwner {
+
+    private lateinit var container: ConstraintLayout
+    private lateinit var outputDirectory: File
+
+    private val executor = Executors.newSingleThreadExecutor()
+    private lateinit var viewFinder: PreviewView
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
+    private var preview: Preview? = null
+    private var imageCapture: ImageCapture? = null
+    private var imageAnalyzer: ImageAnalysis? = null
+    private var camera: Camera? = null
+
+    private var displayId: Int = -1
+
+    private val displayManager by lazy {
+        this.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+    }
+
+
+    private lateinit var cameraExecutor: ExecutorService
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) = Unit
+        override fun onDisplayRemoved(displayId: Int) = Unit
+        override fun onDisplayChanged(displayId: Int) = viewFinder?.let { view ->
+            if (displayId == this@PhotoCapture.displayId) {
+                Log.d(TAG, "Rotation changed: ${view.display.rotation}")
+                imageCapture?.targetRotation = view.display.rotation
+                imageAnalyzer?.targetRotation = view.display.rotation
+            }
+        } ?: Unit
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_photo_capture)
+        container = findViewById(R.id.camera_ui_container)
         viewFinder = findViewById(R.id.view_finder)
+        cameraExecutor = Executors.newSingleThreadExecutor()
+        displayManager.registerDisplayListener(displayListener, null)
+        outputDirectory = getOutputDirectory(this)
 
-        // Request camera permissions
-        if (allPermissionsGranted()) {
-            viewFinder.post { startCamera() }
-        } else {
-            ActivityCompat.requestPermissions(
-                this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS
-            )
+        if (!allPermissionsGranted()) {
+            ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         }
-
-        // Every time the provided texture view changes, recompute layout
-        viewFinder.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-            updateTransform()
+        else {
+            viewFinder.post {
+                // Keep track of the display in which this view is attached
+                displayId = viewFinder.display.displayId
+                // Build UI controls
+                updateCameraUi()
+                // Bind use cases
+                bindCameraUseCases()
+            }
         }
     }
 
-    private val executor = Executors.newSingleThreadExecutor()
-    private lateinit var viewFinder: TextureView
 
-    private fun startCamera() {
-        // Create configuration object for the viewfinder use case
-        val previewConfig = PreviewConfig.Builder().apply {
-            setTargetResolution(Size(640, 480))
-        }.build()
+    override fun onDestroy() {
+        super.onDestroy()
+        cameraExecutor.shutdown()
+        displayManager.unregisterDisplayListener(displayListener)
 
+    }
 
-        // Build the viewfinder use case
-        val preview = Preview(previewConfig)
+    private fun bindCameraUseCases() {
+        val metrics = DisplayMetrics().also { viewFinder.display.getRealMetrics(it) }
+        val screenAspectRatio = aspectRatio(metrics.widthPixels, metrics.heightPixels)
 
-        // Every time the viewfinder is updated, recompute layout
-        preview.setOnPreviewOutputUpdateListener {
-
-            // To update the SurfaceTexture, we have to remove it and re-add it
-            val parent = viewFinder.parent as ViewGroup
-            parent.removeView(viewFinder)
-            parent.addView(viewFinder, 0)
-
-            viewFinder.surfaceTexture = it.surfaceTexture
-            updateTransform()
-        }
-        // Create configuration object for the image capture use case
-        val imageCaptureConfig = ImageCaptureConfig.Builder()
-            .apply {
-                // We don't set a resolution for image capture; instead, we
-                // select a capture mode which will infer the appropriate
-                // resolution based on aspect ration and requested mode
-                setCaptureMode(ImageCapture.CaptureMode.MIN_LATENCY)
+        val rotation = viewFinder.display.rotation
+        val cameraSelector = CameraSelector.Builder().requireLensFacing(lensFacing).build()
+        val cameraProviderFuture = ProcessCameraProvider.getInstance(this@PhotoCapture)
+        cameraProviderFuture.addListener(Runnable {
+            val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
+            //preview
+            preview = Preview.Builder()
+                .setTargetAspectRatio(screenAspectRatio)
+                .setTargetRotation(rotation)
+                .build()
+            preview?.setSurfaceProvider(viewFinder.previewSurfaceProvider)
+            //imageCapture
+            imageCapture = ImageCapture.Builder().apply {
+                setTargetAspectRatio(screenAspectRatio)
+                setTargetRotation(rotation)
             }.build()
-
-        // 按钮监听
-        val imageCapture = ImageCapture(imageCaptureConfig)
-        findViewById<ImageButton>(R.id.capture).setOnClickListener {
-            val file = File(
-                //Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath(),
-                externalMediaDirs.first(),
-                "${System.currentTimeMillis()}.jpg"
-            )
-
-            imageCapture.takePicture(file, executor,
-                object : ImageCapture.OnImageSavedListener {
-                    override fun onError(
-                        imageCaptureError: ImageCapture.ImageCaptureError,
-                        message: String,
-                        exc: Throwable?
-                    ) {
-                        val msg = "Photo capture failed: $message"
-                        Log.e("CameraXApp", msg, exc)
-                        viewFinder.post {
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-
-                    override fun onImageSaved(file: File) {
-                        val msg = "Photo capture succeeded: ${file.absolutePath}"
-                        Log.d("CameraXApp", msg)
-                        viewFinder.post {
-                            Toast.makeText(baseContext, msg, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                })
-        }
-        val analyzerConfig = ImageAnalysisConfig.Builder().apply {
-            // In our analysis, we care more about the latest image than
-            // analyzing *every* image
-            setImageReaderMode(
-                ImageAnalysis.ImageReaderMode.ACQUIRE_LATEST_IMAGE)
-        }.build()
-
-        // Build the image analysis use case and instantiate our analyzer
-        val analyzerUseCase = ImageAnalysis(analyzerConfig).apply {
-            setAnalyzer(executor, LuminosityAnalyzer())
-        }
-
-        // Bind use cases to lifecycle
-        CameraX.bindToLifecycle(this, preview, imageCapture,analyzerUseCase)
+            imageAnalyzer = ImageAnalysis.Builder().apply {
+                setTargetAspectRatio(screenAspectRatio)
+                setTargetRotation(rotation)
+            }.build()
+                .also {
+                    it.setAnalyzer(cameraExecutor, LuminosityAnalyzer { luma ->
+                        Log.i(TAG, "Average luminosity:$luma")
+                    })
+                }
+            cameraProvider.unbindAll()
+            try {
+                camera = cameraProvider.bindToLifecycle(
+                    this,
+                    cameraSelector,
+                    preview,
+                    imageCapture,
+                    imageAnalyzer
+                )
+            } catch (exc: Exception) {
+                Log.e(TAG, "Use case binding failed", exc)
+            }
+        }, ContextCompat.getMainExecutor(this@PhotoCapture))
     }
 
-    private fun updateTransform() {
-        val matrix = Matrix()
-
-        // Compute the center of the view finder
-        val centerX = viewFinder.width / 2f
-        val centerY = viewFinder.height / 2f
-
-        // Correct preview output to account for display rotation
-        val rotationDegrees = when (viewFinder.display.rotation) {
-            Surface.ROTATION_0 -> 0
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> return
-        }
-        matrix.postRotate(-rotationDegrees.toFloat(), centerX, centerY)
-
-        // Finally, apply transformations to our TextureView
-        viewFinder.setTransform(matrix)
+    private fun aspectRatio(width: Int, height: Int): Int {
+        val previewRatio = max(width, height) / min(width, height)
+        return if (kotlin.math.abs(previewRatio - RATIO_4_3) <= kotlin.math.abs(previewRatio - RATIO_16_9)) {
+            AspectRatio.RATIO_4_3
+        } else AspectRatio.RATIO_16_9
     }
 
-    /*如果没有获得权限，toast提示*/
+    private fun updateCameraUi() {
+        container.findViewById<ConstraintLayout>(R.id.camera_ui_container)?.let {
+            container.removeView(it)
+        }
+        val button = findViewById<ImageButton>(R.id.capture)
+        button.setOnClickListener {
+                val photoFile = File(
+                    //Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).getAbsolutePath(),
+                    externalMediaDirs.first(),
+                    "${System.currentTimeMillis()}.jpg"
+                )
+                val metadata = ImageCapture.Metadata().apply {
+                    isReversedHorizontal = lensFacing == CameraSelector.LENS_FACING_FRONT
+                }
+                val outputOption = ImageCapture.OutputFileOptions.Builder(photoFile).setMetadata(metadata).build()
+                imageCapture!!.takePicture(
+                    outputOption,
+                    cameraExecutor,
+                    object : ImageCapture.OnImageSavedCallback {
+                        override fun onError(exception: ImageCaptureException) {
+                            Log.e(TAG, "Photo capture failed: ${exception.message}", exception)
+                        }
+
+                        override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                            val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
+                            Log.d(TAG+"photo_capture", "Photo capture succeeded: $savedUri")
+                            val mimeType = MimeTypeMap.getSingleton()
+                                .getMimeTypeFromExtension(savedUri.toFile().extension)
+                            MediaScannerConnection.scanFile(
+                                this@PhotoCapture,
+                                arrayOf(savedUri.toString()),
+                                arrayOf(mimeType)
+                            ) { _, uri ->
+                                Log.d(TAG, "Image capture scanned into media store: $uri")
+                            }
+                        }
+                    })
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    // Display flash animation to indicate that photo was captured
+                    container.postDelayed({
+                        container.foreground = ColorDrawable(Color.WHITE)
+                        container.postDelayed(
+                            { container.foreground = null }, ANIMATION_FAST_MILLIS)
+                    }, ANIMATION_SLOW_MILLIS)
+                }
+
+        }
+    }
+
+
     override fun onRequestPermissionsResult(
         requestCode: Int, permissions: Array<String>, grantResults: IntArray
     ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
-                if (allPermissionsGranted()) {
-                    viewFinder.post { startCamera() }
-                } else {
-                    Toast.makeText(
-                        this,
-                        "Permissions not granted by the user.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    finish()
-                }
+            if (allPermissionsGranted()) {
+                viewFinder.post { bindCameraUseCases() }
+            } else {
+                Toast.makeText(
+                    this,
+                    "Permissions not granted by the user.",
+                    Toast.LENGTH_SHORT
+                ).show()
+                finish()
+            }
         }
     }
 
-    /*是否获得全部权限*/
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private class LuminosityAnalyzer : ImageAnalysis.Analyzer {
+    private class LuminosityAnalyzer(listener: LumaListener? = null) : ImageAnalysis.Analyzer {
+        private val frameRateWindow = 8
+        private val frameTimestamps = ArrayDeque<Long>(5)
+        private val listeners = ArrayList<LumaListener>().apply { listener?.let { add(it) } }
         private var lastAnalyzedTimestamp = 0L
+        var framesPerSecond: Double = -1.0
+            private set
 
         /**
-         * Helper extension function used to extract a byte array from an
-         * image plane buffer
+         * Used to add listeners that will be called with each luma computed
+         */
+        fun onFrameAnalyzed(listener: LumaListener) = listeners.add(listener)
+
+        /**
+         * Helper extension function used to extract a byte array from an image plane buffer
          */
         private fun ByteBuffer.toByteArray(): ByteArray {
             rewind()    // Rewind the buffer to zero
@@ -198,30 +273,62 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
             get(data)   // Copy the buffer into a byte array
             return data // Return the byte array
         }
-        override fun analyze(image: ImageProxy, rotationDegrees: Int) {
 
-            val currentTimestamp = System.currentTimeMillis()
-            // Calculate the average luma no more often than every second
-            if (currentTimestamp - lastAnalyzedTimestamp >=
-                TimeUnit.SECONDS.toMillis(1)
-            ) {
-                // Since format in ImageAnalysis is YUV, image.planes[0]
-                // contains the Y (luminance) plane
-                val buffer = image.planes[0].buffer
-                // Extract image data from callback object
-                val data = buffer.toByteArray()
-                // Convert the data into an array of pixel values
-                val pixels = data.map { it.toInt() and 0xFF }
-                // Compute average luminance for the image
-                val luma = pixels.average()
-
-                // Log the new luma value
-                //activity.get()?.result=luma.toFloat()
-                Log.d("CameraXApp", "Average luminosity: $luma")
-                // Update timestamp of last analyzed frame
-                lastAnalyzedTimestamp = currentTimestamp
+        override fun analyze(image: ImageProxy) {
+            // If there are no listeners attached, we don't need to perform analysis
+            if (listeners.isEmpty()) {
+                image.close()
+                return
             }
+            // Keep track of frames analyzed
+            val currentTime = System.currentTimeMillis()
+            frameTimestamps.push(currentTime)
 
+            // Compute the FPS using a moving average
+            while (frameTimestamps.size >= frameRateWindow) frameTimestamps.removeLast()
+            val timestampFirst = frameTimestamps.peekFirst() ?: currentTime
+            val timestampLast = frameTimestamps.peekLast() ?: currentTime
+            framesPerSecond = 1.0 / ((timestampFirst - timestampLast) /
+                    frameTimestamps.size.coerceAtLeast(1).toDouble()) * 1000.0
+
+            // Analysis could take an arbitrarily long amount of time
+            // Since we are running in a different thread, it won't stall other use cases
+
+            lastAnalyzedTimestamp = frameTimestamps.first
+
+            // Since format in ImageAnalysis is YUV, image.planes[0] contains the luminance plane
+            val buffer = image.planes[0].buffer
+
+            // Extract image data from callback object
+            val data = buffer.toByteArray()
+
+            // Convert the data into an array of pixel values ranging 0-255
+            val pixels = data.map { it.toInt() and 0xFF }
+
+            // Compute average luminance for the image
+            val luma = pixels.average()
+
+            // Call all listeners with new value
+            listeners.forEach { it(luma) }
+
+            image.close()
+        }
+    }
+
+    companion object {
+
+        private const val TAG = "FluoCam"
+        private const val RATIO_4_3 = 4.0 / 3.0
+        private const val RATIO_16_9 = 16.0 / 9.0
+        private const val ANIMATION_FAST_MILLIS = 50L
+        private const val ANIMATION_SLOW_MILLIS = 100L
+
+        private fun getOutputDirectory(context: Context): File {
+            val appContext = context.applicationContext
+            val mediaDir = context.externalMediaDirs.firstOrNull()?.let {
+                File(it, appContext.resources.getString(R.string.app_name)).apply { mkdirs() } }
+            return if (mediaDir != null && mediaDir.exists())
+                mediaDir else appContext.filesDir
         }
     }
 }

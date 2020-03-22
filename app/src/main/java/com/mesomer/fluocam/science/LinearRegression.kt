@@ -1,15 +1,19 @@
 package com.mesomer.fluocam.science
 
+import android.util.Log
+import kotlin.system.measureNanoTime
+
 class LinearRegression(ArrayofX: Array<Double>, ArrayofY: Array<Double>) {
 
     private val arrayofX=ArrayofX
     private val arrayofY=ArrayofY
     private val meanX = mean(ArrayofX)
     private val meanY = mean(ArrayofY)
-    val b = getintercept()
     val a = getslope()
+    val b = getintercept()
+    val R_2=getR()
 
-    private fun getintercept(): Double {
+    private fun getslope(): Double {
         var DispersionX = getDispersion(arrayofX,meanX)
         var DispersionY =getDispersion(arrayofY,meanY)
         var product = 0.0
@@ -24,8 +28,8 @@ class LinearRegression(ArrayofX: Array<Double>, ArrayofY: Array<Double>) {
 
     }
 
-    private fun getslope(): Double {
-        return meanY-b*meanX
+    private fun getintercept(): Double {
+        return meanY-a*meanX
     }
 
     private fun mean(ArrayofNumber: Array<Double>): Double {
@@ -38,5 +42,21 @@ class LinearRegression(ArrayofX: Array<Double>, ArrayofY: Array<Double>) {
             dispersionArray.add(disperson)
         }
         return dispersionArray.toTypedArray()
+    }
+    private fun getR():Double{
+        var SS_reg=0.0
+        var SS_sum=0.0
+        for (num in arrayofX){
+            val yup=(a*num+b) - meanY
+            SS_reg+=yup*yup
+            Log.i("linear","x=${num},yup=${yup}")
+        }
+
+        for (num in arrayofY){
+            SS_sum+=(num-meanY)*(num-meanY)
+            Log.i("linear","y=${num}")
+
+        }
+        return SS_reg/SS_sum
     }
 }
