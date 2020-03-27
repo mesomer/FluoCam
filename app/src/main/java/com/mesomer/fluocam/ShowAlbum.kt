@@ -3,9 +3,12 @@ package com.mesomer.fluocam
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Environment
 import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -22,14 +25,19 @@ import com.mesomer.fluocam.myview.MyGridVIew
 import kotlinx.android.synthetic.main.activity_show_album.*
 import kotlinx.android.synthetic.main.mark_window.view.*
 import java.io.File
+import java.util.*
+import kotlin.collections.ArrayList
 
 private val REQUIRED_PERMISSIONS =
     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 private const val REQUEST_CODE_PERMISSIONS = 15
-
+private val APPGALLERY=0x111
+private val PHONEGALLERY=0x222
 class ShowAlbum : AppCompatActivity() {
     private var db: AppDatabase?=null
     private var myDao: MyDAO?=null
+    private var showMode=1
+    private lateinit var mediaList: MutableList<File>
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
@@ -68,13 +76,31 @@ class ShowAlbum : AppCompatActivity() {
         }
     }
 
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        val appGallery = menu?.add(0, APPGALLERY,2,"内部")
+        val phoneGallery = menu?.add(0, PHONEGALLERY,1,"外部")
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when(item?.itemId){
+            APPGALLERY->{
+                showMode=1
+                StartShowAlbum()
+            }
+            PHONEGALLERY->{
+                showMode=2
+                StartShowAlbum()
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    var names = ArrayList<String>()
     var paths = ArrayList<String>()
     private fun StartShowAlbum() {
         val adapter = object : BaseAdapter() {
@@ -106,10 +132,7 @@ class ShowAlbum : AppCompatActivity() {
                 val thisphoto=myDao!!.getPhotoByurl(paths[paths.size-position-1])
                 val havePhoto=(thisphoto.size!=0)
                 var thephoto=Photo(paths[paths.size-position-1],"0","0","0",true)
-
-
                 Log.i("path","path:"+paths[paths.size-position-1])
-
                 for (photo in thisphoto){
                     if (photo.path==paths[paths.size-position-1]){
                         thephoto=photo
@@ -120,22 +143,28 @@ class ShowAlbum : AppCompatActivity() {
     }
 
     private fun GetAllPhoto() {
-        val cursor = contentResolver.query(
-            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            null,
-            null,
-            null,
-            null
-        )
-        while (cursor!!.moveToNext()) {
-            val name = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DISPLAY_NAME))
-            val desce = cursor.getString(cursor.getColumnIndex(MediaStore.Images.Media.DESCRIPTION))
-            val path = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA))
-            names.add(name)
-            paths.add(path)
-
+        paths.clear()
+        if(showMode==1){
+            val cursor = contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                null,
+                null,
+                null,
+                null
+            )
+            while (cursor!!.moveToNext()) {
+                val path = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA))
+                paths.add(path)
+            }
+            cursor.close()
         }
-        cursor.close()
+        else{
+            val rootDirectory = File(externalMediaDirs.first().path)
+            mediaList = rootDirectory.listFiles().toMutableList()
+            for (file in mediaList){
+                paths.add(file.path)
+            }
+        }
     }
 
     private fun MarkWindow(source: View, havephoto: Boolean,photo: Photo) {

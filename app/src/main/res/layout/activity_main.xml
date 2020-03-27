@@ -12,19 +12,19 @@
         android:id="@+id/button1"
         android:layout_columnWeight="1"
         android:layout_rowWeight="1"
-        android:text="@string/main_button1" />
+        android:text="拍摄" />
 
     <Button
         android:id="@+id/button2"
         android:layout_rowWeight="1"
         android:layout_columnWeight="1"
-        android:text="@string/main_button2" />
+        android:text="分析" />
 
     <Button
         android:id="@+id/button3"
         android:layout_columnWeight="1"
         android:layout_rowWeight="1"
-        android:text="@string/main_button3" />
+        android:text="管理" />
 
     <Button
         android:id="@+id/button4"
