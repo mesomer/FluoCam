@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.mesomer.fluocam.myview.MyPreviewView
+    <com.mesomer.fluocam.myview.MySurfaceView
         android:id="@+id/view_finder"
         android:layout_width="match_parent"
         android:layout_height="500dp"

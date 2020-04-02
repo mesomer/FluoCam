@@ -2,12 +2,12 @@ package com.mesomer.fluocam.myview
 
 import android.content.Context
 import android.util.AttributeSet
+import android.view.Surface
+import android.view.SurfaceView
+import android.view.TextureView
 import android.view.View
-import androidx.camera.view.PreviewView
-import java.util.jar.Attributes
 
-class MyPreviewView:PreviewView{
-
+class MySurfaceView :TextureView{
     constructor(context: Context): super(context){
     }
 
@@ -16,10 +16,9 @@ class MyPreviewView:PreviewView{
 
     constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int): super(context, attributeSet, defStyleAttr){
     }
-    constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int,defStyleRes:Int):super(context, attributeSet, defStyleAttr,defStyleRes){
+    constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int, defStyleRes:Int):super(context, attributeSet, defStyleAttr,defStyleRes){
 
     }
-
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(View.getDefaultSize(0,widthMeasureSpec), View.getDefaultSize(0,heightMeasureSpec))
         val childWidthSize = measuredWidth
@@ -27,6 +26,4 @@ class MyPreviewView:PreviewView{
         val myheight=MeasureSpec.makeMeasureSpec(4*childWidthSize/3,MeasureSpec.EXACTLY)
         super.onMeasure(mywidth, myheight)
     }
-
-
 }

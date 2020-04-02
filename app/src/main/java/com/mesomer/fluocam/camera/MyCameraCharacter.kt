@@ -12,8 +12,11 @@ class MyCameraCharacter {
             val manager = activity.getSystemService(Context.CAMERA_SERVICE) as CameraManager
             for (cameraId in manager.cameraIdList) {
                 val characteristics = manager.getCameraCharacteristics(cameraId)
-                var result=characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
-                for(cap in result){
+                val result=characteristics.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
+                val level=characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+                //LEGACY, LIMITED, FULL, and LEVEL_3 are 2, 0, 1, and 3
+                Log.d("CameraUtil", "Camera${cameraId}.Capabilities Level=$level")
+                for(cap in result!!){
                     when(cap){
                         CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR-> printLog("$cameraId:MANUAL_SENSOR is Available")
                         CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE-> printLog("$cameraId: BACKWARD_COMPATIBLE is Available")
@@ -30,8 +33,6 @@ class MyCameraCharacter {
                         CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_POST_PROCESSING->printLog("$cameraId :MANUAL_POST_PROCESSING is Available")
                     }
                 }
-
-
             }
         }
         private fun printLog(content:String){

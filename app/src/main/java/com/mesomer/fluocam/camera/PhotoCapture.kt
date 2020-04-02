@@ -7,39 +7,28 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import android.hardware.camera2.CameraCharacteristics
-import android.hardware.camera2.CameraManager
 import android.hardware.camera2.CameraMetadata
 import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.params.ColorSpaceTransform
-import android.hardware.camera2.params.RggbChannelVector
-import android.hardware.camera2.params.StreamConfigurationMap
 import android.hardware.display.DisplayManager
-import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.MotionEvent
-import android.view.TextureView
-import android.webkit.MimeTypeMap
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.camera2.Camera2Config
-import androidx.camera.camera2.impl.Camera2ImplConfig
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.*
+import androidx.camera.extensions.BokehPreviewExtender
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.net.toFile
 import androidx.lifecycle.LifecycleOwner
 import com.mesomer.fluocam.R
 import com.mesomer.fluocam.myview.MyPreviewView
 import java.io.File
-import java.lang.Math.max
-import java.lang.Math.min
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,11 +36,9 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import kotlin.collections.ArrayList
 
-
 //跟踪权限请求
 private const val REQUEST_CODE_PERMISSIONS = 10
 
-// This is an array of all the permission specified in the manifest.
 private val REQUIRED_PERMISSIONS = arrayOf(
     Manifest.permission.CAMERA,
     Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -63,24 +50,30 @@ typealias LumaListener = (luma: Double) -> Unit
 
 class PhotoCapture : AppCompatActivity(), LifecycleOwner {
 
-    private lateinit var container: LinearLayout
+    private lateinit var container: RelativeLayout
     private lateinit var outputDirectory: File
 
-    private val executor = Executors.newSingleThreadExecutor()
     private lateinit var viewFinder: MyPreviewView
-    //private lateinit var viewFinder: PreviewView
-    private lateinit var seekbarWB:SeekBar
+
     private var lensFacing = CameraSelector.LENS_FACING_BACK
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
     private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
-    private var lastTouchx:Float=0f
-    private var lastTouchy:Float=0f
+    private var lastTouchx: Float = 0f
+    private var lastTouchy: Float = 0f
     private var displayId: Int = -1
-    private lateinit var luminotext : TextView
-    private val previewBuilder=Preview.Builder()
-    private lateinit var seekBarvalueText:TextView
+    private lateinit var luminotext: TextView
+    private val imageCaptureBuilder = ImageCapture.Builder()
+    private lateinit var s_or_tButton: Button
+    private lateinit var captureButton: ImageButton
+    private lateinit var mySeekBar: SeekBar
+    private lateinit var bokehPreview: BokehPreviewExtender
+    private var manualMod = false
+    private var changed = false
+    //true for standard
+    private var s_or_t = true
+
     private val displayManager by lazy {
         this.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
     }
@@ -97,7 +90,7 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
                 imageCapture?.targetRotation = view.display.rotation
                 imageAnalyzer?.targetRotation = view.display.rotation
             }
-        } ?: Unit
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -105,13 +98,15 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
         setContentView(R.layout.activity_photo_capture)
         container = findViewById(R.id.camera_ui_container)
         viewFinder = findViewById(R.id.view_finder)
-        seekbarWB = findViewById(R.id.whiteBalance_seekbar)
+        s_or_tButton = findViewById(R.id.s_or_t)
         cameraExecutor = Executors.newSingleThreadExecutor()
         displayManager.registerDisplayListener(displayListener, null)
-        luminotext=findViewById(R.id.lumo)
+        luminotext = findViewById(R.id.lumo)
+        captureButton = findViewById(R.id.capture)
         outputDirectory = getOutputDirectory(this)
-        seekBarvalueText=findViewById(R.id.seekbarValue)
-        seekbarWB.max=5000
+        mySeekBar = findViewById(R.id.mySeekbar)
+        mySeekBar.max = 5000
+        MyCameraCharacter.getHardWareLevel(this)
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         } else {
@@ -131,8 +126,8 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
         super.onDestroy()
         cameraExecutor.shutdown()
         displayManager.unregisterDisplayListener(displayListener)
-
     }
+
 
     private fun bindCameraUseCases() {
         val metrics = DisplayMetrics().also { viewFinder.display.getRealMetrics(it) }
@@ -145,18 +140,26 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
 
         cameraProviderFuture.addListener(Runnable {
             val cameraProvider: ProcessCameraProvider = cameraProviderFuture.get()
-            //preview
+
+            val previewBuilder = Preview.Builder()
+            val previewExtender = Camera2Interop.Extender(previewBuilder)
+            val imageCaptureBuilder=ImageCapture.Builder()
+            val imageCaptureExtender = Camera2Interop.Extender(imageCaptureBuilder)
+
+            previewExtender.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE,CaptureRequest.CONTROL_AWB_MODE_OFF)
+            previewExtender.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE,CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT)
+            imageCaptureExtender.setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE,CaptureRequest.CONTROL_AWB_MODE_AUTO)
+            
             preview = previewBuilder
                 .setTargetAspectRatio(screenAspectRatio)
                 .setTargetRotation(rotation)
                 .build()
-            preview?.setSurfaceProvider(viewFinder.previewSurfaceProvider)
-
-            //imageCapture
-            imageCapture = ImageCapture.Builder().apply {
+            imageCapture = imageCaptureBuilder.apply {
                 setTargetAspectRatio(screenAspectRatio)
                 setTargetRotation(rotation)
             }.build()
+
+            preview?.setSurfaceProvider(viewFinder.previewSurfaceProvider)
             imageAnalyzer = ImageAnalysis.Builder().apply {
                 setTargetAspectRatio(screenAspectRatio)
                 setTargetRotation(rotation)
@@ -172,9 +175,7 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
                     this,
                     cameraSelector,
                     preview,
-                    imageCapture,
-                    imageAnalyzer
-                )
+                    imageCapture)
             } catch (exc: Exception) {
                 Log.e(TAG, "Use case binding failed", exc)
             }
@@ -192,20 +193,18 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
     }
 
     private fun getData(currenttime: Long): String {
-        var data = Date(currenttime)
+        val data = Date(currenttime)
         val format = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.CHINA)
         return format.format(data)
     }
 
-
     @SuppressLint("ClickableViewAccessibility", "RestrictedApi")
     private fun updateCameraUi() {
-        container.findViewById<LinearLayout>(R.id.camera_ui_container)?.let {
+        container.findViewById<RelativeLayout>(R.id.camera_ui_container)?.let {
             container.removeView(it)
         }
-        val button = findViewById<ImageButton>(R.id.capture)
-        button.setOnClickListener {
-            MyCameraCharacter.getHardWareLevel(this@PhotoCapture)
+
+        captureButton.setOnClickListener {
             val photoFile = File(
                 externalMediaDirs.first(),
                 "${getData(System.currentTimeMillis())}.jpg"
@@ -226,15 +225,6 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                         val savedUri = output.savedUri ?: Uri.fromFile(photoFile)
                         Log.d(TAG + "photo_capture", "Photo capture succeeded: $savedUri")
-                        val mimeType = MimeTypeMap.getSingleton()
-                            .getMimeTypeFromExtension(savedUri.toFile().extension)
-                        MediaScannerConnection.scanFile(
-                            this@PhotoCapture,
-                            arrayOf(savedUri.toString()),
-                            arrayOf(mimeType)
-                        ) { _, uri ->
-                            Log.d(TAG, "Image capture scanned into media store: $uri")
-                        }
                     }
                 })
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -246,35 +236,72 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
                     )
                 }, ANIMATION_SLOW_MILLIS)
             }
-
         }
 
         viewFinder.setOnTouchListener { _, event ->
             if (event.action == MotionEvent.ACTION_UP) {
                 return@setOnTouchListener false
             }
-            if (event.x!=lastTouchx&&event.y!=lastTouchy){
-                val cameraControl=camera?.cameraControl
+            if (event.x != lastTouchx && event.y != lastTouchy) {
+                val cameraControl = camera?.cameraControl
                 cameraControl?.cancelFocusAndMetering()
                 val display = viewFinder.display
-                val factory = DisplayOrientedMeteringPointFactory(display, CameraSelector.DEFAULT_BACK_CAMERA,display.width.toFloat(),display.height.toFloat())
+                val factory = DisplayOrientedMeteringPointFactory(
+                    display,
+                    CameraSelector.DEFAULT_BACK_CAMERA,
+                    display.width.toFloat(),
+                    display.height.toFloat()
+                )
                 val point = factory.createPoint(event.x, event.y)
-                Toast.makeText(this,"${event.x},${event.y}" ,Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "${event.x},${event.y}", Toast.LENGTH_LONG).show()
                 val action = FocusMeteringAction.Builder(point).build()
                 cameraControl?.startFocusAndMetering(action)
-                lastTouchx=event.x
-                lastTouchy=event.y
-                luminotext.text="当前亮度${lumino}"
+                lastTouchx = event.x
+                lastTouchy = event.y
+                val co = "当前亮度" + lumino
+                luminotext.text = co
             }
             return@setOnTouchListener true
         }
-
-        seekbarWB.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener{
+        s_or_tButton.setOnClickListener {
+            if (s_or_t) {
+                s_or_t = false
+                s_or_tButton.text = "分析"
+            } else {
+                s_or_t = true
+                s_or_tButton.text = "标定"
+            }
+        }
+        mySeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
 
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                val Camera2Interop=Camera2Interop.Extender(previewBuilder)
-                Camera2Interop.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE,CameraMetadata.CONTROL_AE_MODE_OFF)
-                Camera2Interop.setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY,progress)
+                /*
+                val Camera2Interop= Camera2Interop.Extender(previewBuilder)
+                //Camera2Interop.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE,CameraMetadata.CONTROL_AE_MODE_OFF)
+                Camera2Interop.setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY,5000)
+                Camera2Interop.setCaptureRequestOption(CaptureRequest.SENSOR_FRAME_DURATION, 5000)
+                preview=previewBuilder.build()
+                manualMod=true
+                bindCameraUseCases()
+                */
+                if (!changed) {
+                    val camera2Interop = Camera2Interop.Extender(imageCaptureBuilder)
+                    //amera2Interop.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE,CameraMetadata.CONTROL_AE_MODE_OFF)
+                    camera2Interop.setCaptureRequestOption(
+                        CaptureRequest.CONTROL_AWB_MODE,
+                        CameraMetadata.CONTROL_AWB_MODE_OFF
+                    )
+                    camera2Interop.setCaptureRequestOption(
+                        CaptureRequest.CONTROL_AF_MODE,
+                        CameraMetadata.CONTROL_AF_MODE_OFF
+                    )
+                    camera2Interop.setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, 1000)
+                    camera2Interop.setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, 250)
+                    imageCapture = imageCaptureBuilder.build()
+                    bindCameraUseCases()
+                    changed = true
+                } else
+                    changed = false
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -284,9 +311,6 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
             }
 
         })
-
-
-
     }
 
 
@@ -295,8 +319,9 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
     ) {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
-                viewFinder.post { bindCameraUseCases()
-                updateCameraUi()
+                viewFinder.post {
+                    bindCameraUseCases()
+                    updateCameraUi()
                 }
             } else {
                 Toast.makeText(
@@ -371,7 +396,7 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
 
             // Compute average luminance for the image
             val luma = pixels.average()
-            lumino=luma
+            lumino = luma
             // Call all listeners with new value
             listeners.forEach { it(luma) }
 

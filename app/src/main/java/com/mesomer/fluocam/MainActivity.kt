@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.mesomer.databasetest.data.AppDatabase
 import com.mesomer.databasetest.data.MyDAO
+import com.mesomer.fluocam.camera.Camera2Activity
 import com.mesomer.fluocam.camera.PhotoCapture
 
 class MainActivity : AppCompatActivity() {
@@ -39,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         //按钮的点击事件
 
         button1.setOnClickListener {
-            val intent = Intent(this@MainActivity,PhotoCapture::class.java)
+            val intent = Intent(this@MainActivity,Camera2Activity::class.java)
             startActivity(intent)
         }
 

@@ -77,8 +77,8 @@ class ShowAlbum : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        val appGallery = menu?.add(0, APPGALLERY,2,"内部")
-        val phoneGallery = menu?.add(0, PHONEGALLERY,1,"外部")
+        menu?.add(0, APPGALLERY,2,"内部")
+        menu?.add(0, PHONEGALLERY,1,"外部")
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -128,7 +128,7 @@ class ShowAlbum : AppCompatActivity() {
         GetAllPhoto()
         photogrid.adapter = adapter
         photogrid.onItemClickListener =
-            AdapterView.OnItemClickListener { parent, view, position, id ->
+            AdapterView.OnItemClickListener { _, view, position, _ ->
                 val thisphoto=myDao!!.getPhotoByurl(paths[paths.size-position-1])
                 val havePhoto=(thisphoto.size!=0)
                 var thephoto=Photo(paths[paths.size-position-1],"0","0","0",true)
@@ -138,7 +138,7 @@ class ShowAlbum : AppCompatActivity() {
                         thephoto=photo
                     }
                 }
-                MarkWindow(view, havePhoto,thephoto)
+                MarkWindow(havePhoto,thephoto)
             }
     }
 
@@ -167,11 +167,11 @@ class ShowAlbum : AppCompatActivity() {
         }
     }
 
-    private fun MarkWindow(source: View, havephoto: Boolean,photo: Photo) {
+    private fun MarkWindow(havephoto: Boolean,photo: Photo) {
         val MarkForm = layoutInflater.inflate(R.layout.mark_window, null)
-        var concentrationEdit=MarkForm.concentration
-        var groupEdit=MarkForm.group_num
-        var isStandarRatio=MarkForm.sampletag
+        val concentrationEdit=MarkForm.concentration
+        val groupEdit=MarkForm.group_num
+        val isStandarRatio=MarkForm.sampletag
 
         if (havephoto){
             concentrationEdit.setText(photo.concentration)

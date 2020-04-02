@@ -120,31 +120,31 @@ class ShowResult : AppCompatActivity() {
     }
 
     private fun drawLine(Slope:Double,Intercept:Double,minX:Double,maxX:Double,a:Double,b:Double,Rsquare:Double){
-        var mydata = ArrayList<Pair<Double, Double>>()
+        val mydata = ArrayList<Pair<Double, Double>>()
         val minx=minX
         val maxx=maxX
         val slope=Slope
         val intercept=Intercept
         var startX=0.0
-        var endX=0.0
+
         if ((minx-0.2*minx)>0){
             startX=(minx-0.2*minx)
         }
-        endX=(maxx+0.2* maxx)
+        val endX=(maxx+0.2* maxx)
         mydata.add(Pair(startX,startX*slope+intercept))
         mydata.add(Pair(endX,endX*slope+intercept))
-        var entries = ArrayList<Entry>()
+        val entries = ArrayList<Entry>()
         for (point in mydata) {
             entries.add(Entry(point.first.toFloat(), point.second.toFloat()))
         }
         val df = DecimalFormat("#.###")
         df.roundingMode = RoundingMode.CEILING
-        var datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
+        val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
 
         datset.setColor(Color.GREEN)
         datset.setDrawCircles(false)
 
-        var linedata = LineData(datset)
+        val linedata = LineData(datset)
         chart.data = linedata
         chart.invalidate()
     }
@@ -175,8 +175,8 @@ class ShowResult : AppCompatActivity() {
 
     private fun setChartViewSize(view: View) {
         val myDisplay = windowManager.defaultDisplay
-        var viewParam = view.layoutParams
-        var point = Point(0, 0)
+        val viewParam = view.layoutParams
+        val point = Point(0, 0)
         myDisplay.getSize(point)
         viewParam.height = point.y / 2
     }

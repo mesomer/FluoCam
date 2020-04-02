@@ -13,7 +13,6 @@ class MyGridVIew(context: Context) : androidx.appcompat.widget.AppCompatImageVie
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(View.getDefaultSize(0,widthMeasureSpec), View.getDefaultSize(0,heightMeasureSpec))
         val childWidthSize = measuredWidth
-        val childheight=measuredHeight
         val mywidth=MeasureSpec.makeMeasureSpec(childWidthSize,MeasureSpec.EXACTLY)
         val myheight=mywidth
         super.onMeasure(mywidth, myheight)
