@@ -105,8 +105,7 @@ class PhotoCapture : AppCompatActivity(), LifecycleOwner {
         captureButton = findViewById(R.id.capture)
         outputDirectory = getOutputDirectory(this)
         mySeekBar = findViewById(R.id.mySeekbar)
-        mySeekBar.max = 5000
-        MyCameraCharacter.getHardWareLevel(this)
+
         if (!allPermissionsGranted()) {
             ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         } else {
