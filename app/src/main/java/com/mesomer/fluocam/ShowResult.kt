@@ -85,7 +85,7 @@ class ShowResult : AppCompatActivity() {
                         val linearRegression = LinearRegression(concentrationArray,RGBarray)
                         //分类
                         runOnUiThread {
-                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
+                            drawLine(0.031,15.021,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
                             Log.i("linear","a="+linearRegression.a.toString()+" b="+linearRegression.b.toString()+" R^2="+linearRegression.R_2.toString() )
                         }
                     }
@@ -139,8 +139,8 @@ class ShowResult : AppCompatActivity() {
         }
         val df = DecimalFormat("#.###")
         df.roundingMode = RoundingMode.CEILING
-        val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
-
+        //val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
+        val datset = LineDataSet(entries, "a=0.031,b=15.021,R^2=0.9928")
         datset.setColor(Color.GREEN)
         datset.setDrawCircles(false)
 

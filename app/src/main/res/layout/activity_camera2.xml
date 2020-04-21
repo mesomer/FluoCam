@@ -8,7 +8,7 @@
     <com.mesomer.fluocam.myview.MySurfaceView
         android:id="@+id/view_finder"
         android:layout_width="match_parent"
-        android:layout_height="500dp"
+        android:layout_height="600dp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true" />
 
@@ -77,7 +77,33 @@
             android:buttonTint="@color/white"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"/>
-
     </RadioGroup>
+
+    <EditText
+        android:id="@+id/concentration_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/capture"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="10dp"
+        android:hint="@string/concentration"
+        android:textColor="@color/white"
+        android:textColorHint="@color/white"
+        android:layout_toEndOf="@+id/capture" />
+    <EditText
+        android:id="@+id/group_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/concentration_text"
+        android:layout_alignParentEnd="true"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="50dp"
+        android:hint="@string/group"
+        android:textColor="@color/white"
+        android:textColorHint="@color/white"
+        android:layout_toEndOf="@+id/capture" />
 
 </RelativeLayout>

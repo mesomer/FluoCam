@@ -162,7 +162,10 @@ class ShowAlbum : AppCompatActivity() {
             val rootDirectory = File(externalMediaDirs.first().path)
             mediaList = rootDirectory.listFiles().toMutableList()
             for (file in mediaList){
-                paths.add(file.path)
+                val end = file.name.substring(file.name.lastIndexOf(".") + 1, file.name.length).toLowerCase(Locale.getDefault())
+                if (end == "jpg"){
+                    paths.add(file.path)
+                }
             }
         }
     }

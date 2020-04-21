@@ -6,4 +6,6 @@
     <string name="main_button4">四</string>
     <string name="ISO">感光度</string>
     <string name="ExposureTime">曝光时间</string>
+    <string name="concentration">浓度</string>
+    <string name="group">组</string>
 </resources>

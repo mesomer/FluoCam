@@ -47,6 +47,7 @@ class Camera2Activity : AppCompatActivity() {
     private lateinit var prviewRequest: CaptureRequest
     private lateinit var captureSession: CameraCaptureSession
     private lateinit var imageReader: ImageReader
+    private lateinit var mRawImageReader: ImageReader
     private lateinit var container: RelativeLayout
     private lateinit var manager: CameraManager
     private lateinit var seekBar: SeekBar
@@ -116,7 +117,7 @@ class Camera2Activity : AppCompatActivity() {
         val surface = Surface(texture)
         previewRequsetBuiler = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         previewRequsetBuiler.addTarget(surface)
-        cameraDevice.createCaptureSession(listOf(surface, imageReader.surface), object :
+        cameraDevice.createCaptureSession(listOf(surface, imageReader.surface,mRawImageReader.surface), object :
             CameraCaptureSession.StateCallback() {
             override fun onConfigureFailed(session: CameraCaptureSession) {
                 Toast.makeText(this@Camera2Activity, "配置失败", Toast.LENGTH_SHORT).show()
@@ -143,12 +144,14 @@ class Camera2Activity : AppCompatActivity() {
 
         val captureRequestBulder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
         captureRequestBulder.addTarget(imageReader.surface)
+        captureRequestBulder.addTarget(mRawImageReader.surface)
         captureRequestBulder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
         val rotation = windowManager.defaultDisplay.rotation
         captureRequestBulder.set(CaptureRequest.JPEG_ORIENTATION, OREINTATIONS.get(rotation))
         if (manualmod){
-            previewRequsetBuiler.set(CaptureRequest.SENSOR_SENSITIVITY, settedISO)
-            previewRequsetBuiler.set(CaptureRequest.SENSOR_EXPOSURE_TIME, settedEtime)
+            captureRequestBulder.set(CaptureRequest.CONTROL_AE_MODE,CaptureRequest.CONTROL_AE_MODE_OFF)
+            captureRequestBulder.set(CaptureRequest.SENSOR_SENSITIVITY, settedISO)
+            captureRequestBulder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, settedEtime)
         }
         captureSession.stopRepeating()
         captureSession.capture(
@@ -163,34 +166,44 @@ class Camera2Activity : AppCompatActivity() {
                         CaptureRequest.CONTROL_AF_TRIGGER,
                         CameraMetadata.CONTROL_AF_TRIGGER_CANCEL
                     )
-                    captureSession.setRepeatingRequest(prviewRequest, null, cameraHandler)
+                    captureSession.setRepeatingRequest(prviewRequest, null,cameraHandler)
                 }
             },
             null
         )
     }
-
     private fun setUpCameraOutputs() {
         manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val characteristics = manager.getCameraCharacteristics(mCameraId)
         val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-        val largest =
-            Collections.max(listOf(*map!!.getOutputSizes(ImageFormat.JPEG)), ComparaSizesByArea())
-        imageReader = ImageReader.newInstance(largest.width, largest.width, ImageFormat.JPEG, 2)
-
+        val largestJpg = Collections.max(listOf(*map!!.getOutputSizes(ImageFormat.JPEG)), ComparaSizesByArea())
+        val largestRaw = Collections.max(listOf(*map.getOutputSizes(ImageFormat.RAW_SENSOR)), ComparaSizesByArea())
+        imageReader = ImageReader.newInstance(largestJpg.width, largestJpg.height, ImageFormat.JPEG, 2)
+        mRawImageReader = ImageReader.newInstance(largestRaw.width,largestRaw.height,ImageFormat.RAW_SENSOR,1)
         imageReader.setOnImageAvailableListener({ reader ->
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
             val bytes = ByteArray(buffer.remaining())
-            val file = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.jpg")
+            val fileJpg = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.jpg")
             buffer.get(bytes)
             image.use { _ ->
-                FileOutputStream(file).use { output ->
+                FileOutputStream(fileJpg).use { output ->
                     output.write(bytes)
                     flashScreen()
                 }
             }
         }, imageReaderHandler)
+        mRawImageReader.setOnImageAvailableListener({reader ->
+            val image = reader.acquireNextImage()
+            val buffer = image.planes[0].buffer
+            val bytes = ByteArray(buffer.remaining())
+            val fileRaw = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.dng")
+            image.use { _ ->
+                FileOutputStream(fileRaw).use { output ->
+                    output.write(bytes)
+                }
+            }
+        },imageReaderHandler)
     }
 
     private class ComparaSizesByArea : Comparator<Size> {
@@ -232,6 +245,7 @@ class Camera2Activity : AppCompatActivity() {
         maxISO = myCameraCharacter.upperISO
         minExposure = myCameraCharacter.lowerExposure
         maxExposure = msTons(1000)
+        seekBar.max=1000
         seekBar.setOnSeekBarChangeListener(seekBarListener)
         radio.setOnCheckedChangeListener { group, checkedId ->
             when (checkedId) {
@@ -240,7 +254,7 @@ class Camera2Activity : AppCompatActivity() {
                     val Etimenow=previewRequsetBuiler.get(CaptureRequest.SENSOR_EXPOSURE_TIME)
                     textcontent = "Exposure Time :${nsToms(Etimenow)}"
                     valueNow.text = textcontent
-                    seekBar.progress=((Etimenow-minExposure)*100/(maxExposure-minExposure)).toInt()
+                    seekBar.progress=((Etimenow-minExposure)*1000/(maxExposure-minExposure)).toInt()
                 }
 
                 R.id.isoSelected -> {
@@ -248,7 +262,7 @@ class Camera2Activity : AppCompatActivity() {
                     val nowISO=previewRequsetBuiler.get(CaptureRequest.SENSOR_SENSITIVITY)!!
                     textcontent = "ISO :$nowISO"
                     valueNow.text = textcontent
-                    seekBar.progress=(nowISO-minISO)*100/(maxISO-minISO)
+                    seekBar.progress=(nowISO-minISO)*1000/(maxISO-minISO)
                 }
             }
         }
@@ -267,18 +281,17 @@ class Camera2Activity : AppCompatActivity() {
                     CaptureRequest.CONTROL_AF_MODE,
                     CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
                 )
-
                 when (rationStaus) {
                     1 -> {
                         manualmod=true
-                        settedISO = minISO + progress * (maxISO - minISO) / 100
+                        settedISO = minISO + progress * (maxISO - minISO) / 1000
                         previewRequsetBuiler.set(CaptureRequest.SENSOR_SENSITIVITY, settedISO)
                         textcontent = "ISO: $settedISO"
                         valueNow.text = textcontent
                     }
                     0 -> {
                         manualmod=true
-                        settedEtime = minExposure + progress * (maxExposure - minExposure) / 100
+                        settedEtime = minExposure + progress * (maxExposure - minExposure) / 1000
                         previewRequsetBuiler.set(CaptureRequest.SENSOR_EXPOSURE_TIME, settedEtime)
                         textcontent = "Exposure Time: ${nsToms(settedEtime)}"
                         valueNow.text = textcontent
