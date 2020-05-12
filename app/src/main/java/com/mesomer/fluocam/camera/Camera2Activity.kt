@@ -19,12 +19,16 @@ import android.util.Size
 import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
+import android.view.View
 import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.mesomer.databasetest.data.AppDatabase
+import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.R
+import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MySurfaceView
 import java.io.File
 import java.io.FileOutputStream
@@ -47,15 +51,19 @@ class Camera2Activity : AppCompatActivity() {
     private lateinit var prviewRequest: CaptureRequest
     private lateinit var captureSession: CameraCaptureSession
     private lateinit var imageReader: ImageReader
-    private lateinit var mRawImageReader: ImageReader
+    //private lateinit var mRawImageReader: ImageReader
     private lateinit var container: RelativeLayout
     private lateinit var manager: CameraManager
     private lateinit var seekBar: SeekBar
     private lateinit var valueNow: TextView
     private lateinit var myCameraCharacter: MyCameraCharacter
+    private lateinit var modeBotton:Button
+    private lateinit var concentrationEditText:EditText
+    private lateinit var groupIdEditText: EditText
     private var settedISO=50
     private var settedEtime=msTons(1)
     private var manualmod=false
+    private var captureMode=true
     private val cameraThread = HandlerThread("CameraThread").apply { start() }
     private val cameraHandler = Handler(cameraThread.looper)
     private val imageReaderThread = HandlerThread("imageReaderThread").apply { start() }
@@ -66,6 +74,8 @@ class Camera2Activity : AppCompatActivity() {
     private var maxExposure by Delegates.notNull<Long>()
     private var rationStaus: Int = 1
     private var textcontent = ""
+    private var db: AppDatabase?=null
+    private var myDao: MyDAO?=null
     private val mSurfaceTextureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureSizeChanged(
             surface: SurfaceTexture?,
@@ -117,7 +127,8 @@ class Camera2Activity : AppCompatActivity() {
         val surface = Surface(texture)
         previewRequsetBuiler = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         previewRequsetBuiler.addTarget(surface)
-        cameraDevice.createCaptureSession(listOf(surface, imageReader.surface,mRawImageReader.surface), object :
+
+        cameraDevice.createCaptureSession(listOf(surface, imageReader.surface), object :
             CameraCaptureSession.StateCallback() {
             override fun onConfigureFailed(session: CameraCaptureSession) {
                 Toast.makeText(this@Camera2Activity, "配置失败", Toast.LENGTH_SHORT).show()
@@ -144,7 +155,7 @@ class Camera2Activity : AppCompatActivity() {
 
         val captureRequestBulder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
         captureRequestBulder.addTarget(imageReader.surface)
-        captureRequestBulder.addTarget(mRawImageReader.surface)
+       // captureRequestBulder.addTarget(mRawImageReader.surface)
         captureRequestBulder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
         val rotation = windowManager.defaultDisplay.rotation
         captureRequestBulder.set(CaptureRequest.JPEG_ORIENTATION, OREINTATIONS.get(rotation))
@@ -177,9 +188,7 @@ class Camera2Activity : AppCompatActivity() {
         val characteristics = manager.getCameraCharacteristics(mCameraId)
         val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         val largestJpg = Collections.max(listOf(*map!!.getOutputSizes(ImageFormat.JPEG)), ComparaSizesByArea())
-        val largestRaw = Collections.max(listOf(*map.getOutputSizes(ImageFormat.RAW_SENSOR)), ComparaSizesByArea())
         imageReader = ImageReader.newInstance(largestJpg.width, largestJpg.height, ImageFormat.JPEG, 2)
-        mRawImageReader = ImageReader.newInstance(largestRaw.width,largestRaw.height,ImageFormat.RAW_SENSOR,1)
         imageReader.setOnImageAvailableListener({ reader ->
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
@@ -188,11 +197,35 @@ class Camera2Activity : AppCompatActivity() {
             buffer.get(bytes)
             image.use { _ ->
                 FileOutputStream(fileJpg).use { output ->
-                    output.write(bytes)
-                    flashScreen()
+                    if (groupIdEditText.text.isEmpty()){
+                        Toast.makeText(this,"请输入组名",Toast.LENGTH_SHORT).show()
+                    }
+                    else{
+                        output.write(bytes)
+                        flashScreen()
+                    }
+                }
+            }
+            if (captureMode){
+                if (concentrationEditText.text.isEmpty()){
+                    Toast.makeText(this,"请输入浓度",Toast.LENGTH_SHORT).show()
+                }
+                else {
+                    val phtoto = Photo(
+                        concentration = concentrationEditText.text.toString(),
+                        groupID = groupIdEditText.text.toString(),
+                        IsStander = true,
+                        name = "",
+                        path = fileJpg.path
+                    )
+                    myDao!!.insertPhoto(phtoto)
                 }
             }
         }, imageReaderHandler)
+        /**
+        val largestRaw = Collections.max(listOf(*map.getOutputSizes(ImageFormat.RAW_SENSOR)), ComparaSizesByArea())
+        mRawImageReader = ImageReader.newInstance(largestRaw.width,largestRaw.height,ImageFormat.RAW_SENSOR,1)
+
         mRawImageReader.setOnImageAvailableListener({reader ->
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
@@ -204,6 +237,8 @@ class Camera2Activity : AppCompatActivity() {
                 }
             }
         },imageReaderHandler)
+        **/
+
     }
 
     private class ComparaSizesByArea : Comparator<Size> {
@@ -237,8 +272,11 @@ class Camera2Activity : AppCompatActivity() {
         textureView = findViewById(R.id.view_finder)
         container = findViewById(R.id.camera_ui_container)
         seekBar = findViewById(R.id.mySeekbar)
+        modeBotton = findViewById(R.id.s_or_t)
         val radio = findViewById<RadioGroup>(R.id.selecter)
+        concentrationEditText=findViewById(R.id.concentration_text)
         valueNow = findViewById(R.id.lumo)
+        groupIdEditText=findViewById(R.id.group_text)
         ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         myCameraCharacter = MyCameraCharacter(this@Camera2Activity)
         minISO = myCameraCharacter.lowerISO
@@ -246,6 +284,8 @@ class Camera2Activity : AppCompatActivity() {
         minExposure = myCameraCharacter.lowerExposure
         maxExposure = msTons(1000)
         seekBar.max=1000
+        db = AppDatabase.getAppDataBase(context = this)
+        myDao = db?.myDao()
         seekBar.setOnSeekBarChangeListener(seekBarListener)
         radio.setOnCheckedChangeListener { group, checkedId ->
             when (checkedId) {
@@ -264,6 +304,17 @@ class Camera2Activity : AppCompatActivity() {
                     valueNow.text = textcontent
                     seekBar.progress=(nowISO-minISO)*1000/(maxISO-minISO)
                 }
+            }
+        }
+        modeBotton.setOnClickListener {
+            captureMode=!captureMode
+            if (captureMode){
+                modeBotton.text="标定"
+                concentrationEditText.visibility=View.VISIBLE
+            }
+            else{
+                modeBotton.text="检测"
+                concentrationEditText.visibility= View.INVISIBLE
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.mesomer.fluocam
 
 import android.annotation.SuppressLint
+import android.content.DialogInterface
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Point
@@ -12,6 +13,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ExpandableListView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -83,10 +85,10 @@ class ShowResult : AppCompatActivity() {
                         val RGBarray=RGBvalue.toTypedArray()
                         val concentrationArray=concentrationValue.toTypedArray()
                         val linearRegression = LinearRegression(concentrationArray,RGBarray)
-                        //分类
+
                         runOnUiThread {
-                            drawLine(0.031,15.021,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
                             Log.i("linear","a="+linearRegression.a.toString()+" b="+linearRegression.b.toString()+" R^2="+linearRegression.R_2.toString() )
+                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
                         }
                     }
                     //初始化列表
@@ -139,8 +141,7 @@ class ShowResult : AppCompatActivity() {
         }
         val df = DecimalFormat("#.###")
         df.roundingMode = RoundingMode.CEILING
-        //val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
-        val datset = LineDataSet(entries, "a=0.031,b=15.021,R^2=0.9928")
+        val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
         datset.setColor(Color.GREEN)
         datset.setDrawCircles(false)
 
@@ -162,6 +163,10 @@ class ShowResult : AppCompatActivity() {
         myThread.start()
 
         expandListView.setOnGroupExpandListener { groupPosition -> sendmessage(0x222,groupPosition)  }
+        expandListView.setOnItemLongClickListener { parent, view, position, id ->
+            DeleteWindow(position)
+            true
+        }
         //设置图表View的高
         setChartViewSize(chart)
         //延时一段时间更新UI
@@ -192,5 +197,11 @@ class ShowResult : AppCompatActivity() {
         bundle.putInt(GROUP_NUM,groupNum)
         msg.data = bundle
         myThread.mHandler.sendMessage(msg)
+    }
+    private fun DeleteWindow(groupNum:Int){
+        AlertDialog.Builder(this).setTitle("删除本组").setMessage("删除组：${groupList[groupNum]}?").setPositiveButton("删除"){dialog, which ->
+            myDao.deleteByGroup(groupList[groupNum])
+            sendmessage(0x111)
+        }.setNegativeButton("取消"){dialog, which ->  }.create().show()
     }
 }

@@ -16,9 +16,8 @@ class MySurfaceView :TextureView{
 
     constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int): super(context, attributeSet, defStyleAttr){
     }
-    constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int, defStyleRes:Int):super(context, attributeSet, defStyleAttr,defStyleRes){
+    constructor(context: Context, attributeSet: AttributeSet, defStyleAttr: Int, defStyleRes:Int):super(context, attributeSet, defStyleAttr,defStyleRes){}
 
-    }
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(View.getDefaultSize(0,widthMeasureSpec), View.getDefaultSize(0,heightMeasureSpec))
         val childWidthSize = measuredWidth

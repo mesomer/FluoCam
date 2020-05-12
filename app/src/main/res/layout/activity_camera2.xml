@@ -20,7 +20,8 @@
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10dp"
         android:background="@drawable/button_ring"
-        android:scaleType="fitXY" />
+        android:scaleType="fitXY"/>
+
 
     <Button
         android:id="@+id/s_or_t"
@@ -44,6 +45,7 @@
         android:text=""
         android:textColor="#FFFFFF" />
     <SeekBar
+        android:visibility="visible"
         android:id="@+id/mySeekbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -52,6 +54,7 @@
         />
 
     <RadioGroup
+
         android:id="@+id/selecter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -91,7 +94,8 @@
         android:hint="@string/concentration"
         android:textColor="@color/white"
         android:textColorHint="@color/white"
-        android:layout_toEndOf="@+id/capture" />
+        android:layout_toEndOf="@+id/capture"
+         />
     <EditText
         android:id="@+id/group_text"
         android:layout_width="wrap_content"
@@ -101,7 +105,7 @@
         android:layout_marginStart="10dp"
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="50dp"
-        android:hint="@string/group"
+        android:hint="组别"
         android:textColor="@color/white"
         android:textColorHint="@color/white"
         android:layout_toEndOf="@+id/capture" />

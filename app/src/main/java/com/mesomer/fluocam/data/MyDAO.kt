@@ -14,6 +14,8 @@ interface MyDAO {
 
     @Delete
     fun deletPhoto(photo: Photo)
+    @Query("DELETE FROM PHOTO WHERE groupID==:groupID")
+    fun deleteByGroup(groupID: String)
 
     @Query("SELECT *FROM Photo WHERE path==:path")
     fun getPhotoByurl(path: String): List<Photo>

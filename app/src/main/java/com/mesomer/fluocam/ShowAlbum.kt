@@ -1,6 +1,7 @@
 package com.mesomer.fluocam
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Environment
@@ -128,7 +129,7 @@ class ShowAlbum : AppCompatActivity() {
         GetAllPhoto()
         photogrid.adapter = adapter
         photogrid.onItemClickListener =
-            AdapterView.OnItemClickListener { _, view, position, _ ->
+            AdapterView.OnItemClickListener { _, _, position, _ ->
                 val thisphoto=myDao!!.getPhotoByurl(paths[paths.size-position-1])
                 val havePhoto=(thisphoto.size!=0)
                 var thephoto=Photo(paths[paths.size-position-1],"0","0","0",true)
@@ -139,6 +140,13 @@ class ShowAlbum : AppCompatActivity() {
                     }
                 }
                 MarkWindow(havePhoto,thephoto)
+            }
+        photogrid.onItemLongClickListener=
+            AdapterView.OnItemLongClickListener{_, _, position, _ ->
+                val intent = Intent(this@ShowAlbum,ImageReaderActivity::class.java)
+                intent.putExtra("path",paths[paths.size-position-1])
+                startActivity(intent)
+                true
             }
     }
 
