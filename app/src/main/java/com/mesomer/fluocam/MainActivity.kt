@@ -14,7 +14,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.mesomer.databasetest.data.AppDatabase
 import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.camera.Camera2Activity
-import com.mesomer.fluocam.camera.PhotoCapture
 
 class MainActivity : AppCompatActivity() {
     //private var db: AppDatabase?=null
@@ -55,7 +54,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         button4.setOnClickListener {
-            Toast.makeText(this@MainActivity,"点击按钮四",Toast.LENGTH_LONG).show()
+            val intent = Intent(this@MainActivity,ParamInputActivity::class.java)
+            startActivity(intent)
         }
     }
 }

@@ -7,6 +7,7 @@ apply plugin: 'kotlin-android-extensions'
 apply plugin: 'kotlin-kapt'
 android {
     compileSdkVersion 28
+    viewBinding.enabled = true
     defaultConfig {
         applicationId "com.mesomer.fluocam"
         minSdkVersion 21

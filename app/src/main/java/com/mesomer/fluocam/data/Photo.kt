@@ -11,5 +11,4 @@ data class Photo(
     val concentration: String,
     val groupID:String,
     val IsStander:Boolean
-
 )

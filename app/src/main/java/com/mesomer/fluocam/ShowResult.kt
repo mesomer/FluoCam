@@ -1,8 +1,8 @@
 package com.mesomer.fluocam
 
 import android.annotation.SuppressLint
-import android.content.DialogInterface
-import android.graphics.Bitmap
+import android.content.Context
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Point
 import android.os.Bundle
@@ -12,46 +12,46 @@ import android.os.Message
 import android.util.Log
 import android.view.View
 import android.widget.ExpandableListView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.request.FutureTarget
+import com.github.mikephil.charting.charts.CombinedChart
 import com.github.mikephil.charting.charts.LineChart
-import com.github.mikephil.charting.data.Entry
-import com.github.mikephil.charting.data.LineData
-import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.charts.ScatterChart
+import com.github.mikephil.charting.data.*
 import com.mesomer.databasetest.data.AppDatabase
 import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.adapter.MyExpandableAdapter
 import com.mesomer.fluocam.camera.RGBmap
-import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MyRec
 import com.mesomer.fluocam.science.LinearRegression
 import java.io.File
 import java.math.RoundingMode
 import java.text.DecimalFormat
-import java.text.ParsePosition
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.math.max
 
 const val GROUP_NUM="groupnum"
 class ShowResult : AppCompatActivity() {
-
+    private val CENTERX = "centerX"
+    private val CENTERY = "centerY"
+    private val RECWIDTH = "recwidth"
+    private val RECHEIGHT = "recheight"
     private lateinit var db : AppDatabase
     private lateinit var myDao: MyDAO
     private lateinit var myThread: MyThread
-    private lateinit var chart: LineChart
+    private lateinit var chart: CombinedChart
     private lateinit var expandListView: ExpandableListView
-
+    private lateinit var dotX:Array<Double>
+    private lateinit var dotY:Array<Double>
     private lateinit var groupArrayList : ArrayList<String>
     private lateinit var sampleArrayList : ArrayList<ArrayList<String>>
-
+    val myDotData = ArrayList<Pair<Double,Double>>()
     private lateinit var groupList: List<String>
 
     internal inner class MyThread : Thread() {
+        var relativeZero=0.0
+
         lateinit var mHandler: Handler
         override fun run() {
             Looper.prepare()
@@ -63,16 +63,37 @@ class ShowResult : AppCompatActivity() {
                         //获得符合条件的Photo()
                         val groupNum = msg.data.getInt(GROUP_NUM)
                         val photoReturn = myDao.getPhotoByGroupID(groupArrayList[groupNum])
-                        val Rec_area=MyRec(1560,2036,30,30)
+                        var preferences: SharedPreferences = getSharedPreferences(CENTERX, Context.MODE_PRIVATE)
+                        val centerX = preferences.getInt(CENTERX, 0)
+                        preferences = getSharedPreferences(CENTERY, Context.MODE_PRIVATE)
+                        val centery = preferences.getInt(CENTERY, 0)
+                        preferences = getSharedPreferences(RECWIDTH, Context.MODE_PRIVATE)
+                        val recwidth = preferences.getInt(RECWIDTH, 0)
+                        preferences = getSharedPreferences(RECHEIGHT, Context.MODE_PRIVATE)
+                        val recheight = preferences.getInt(RECHEIGHT, 0)
+                        val Rec_area=MyRec(centerX,centery,recwidth ,recheight)
                         val RGBvalue = ArrayList<Double>()
                         val concentrationValue=ArrayList<Double>()
+                        val relativeArray=ArrayList<Double>()
+                        val eigenvalue=ArrayList<Double>()
                         for(photo in photoReturn){
                             if(photo.IsStander) {
                                 val photoBitmap =
                                     Glide.with(this@ShowResult).asBitmap().load(File(photo.path))
                                         .submit().get()
                                 val greenArray = RGBmap(photoBitmap, Rec_area).getGArray()
-                                val meanGreen = (greenArray.sum() / greenArray.size).toDouble()
+                                greenArray.sort()
+                                val length=greenArray.size
+                                var sumGreen=0
+                                for (i in (length-300) until length-1){
+                                    sumGreen+=greenArray[i]
+                                }
+                                val meanGreen = sumGreen/300.0
+
+                                if (photo.concentration.toInt()==0){
+                                    relativeArray.add(meanGreen)
+                                }
+
                                 Log.i(
                                     "RGBmap",
                                     "meangreen=${meanGreen},greenarray.size=${greenArray.size}"
@@ -82,13 +103,23 @@ class ShowResult : AppCompatActivity() {
                                 Log.i("RGBmap", "concentration=${photo.concentration.toDouble()}")
                             }
                         }
-                        val RGBarray=RGBvalue.toTypedArray()
+                        if (relativeArray.size!=0){
+                            relativeZero=relativeArray.sum()/relativeArray.size
+                        }
+                        for (value in RGBvalue){
+                            eigenvalue.add(value/relativeZero)
+                        }
+                        for (i in concentrationValue.indices){
+                            myDotData.add(Pair(concentrationValue[i],eigenvalue[i]))
+                        }
+
+                        val RGBarray=eigenvalue.toTypedArray()
                         val concentrationArray=concentrationValue.toTypedArray()
                         val linearRegression = LinearRegression(concentrationArray,RGBarray)
 
                         runOnUiThread {
                             Log.i("linear","a="+linearRegression.a.toString()+" b="+linearRegression.b.toString()+" R^2="+linearRegression.R_2.toString() )
-                            drawLine(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.a,linearRegression.b,linearRegression.R_2)
+                            drawChart(linearRegression.a,linearRegression.b,concentrationArray.min()!!,concentrationArray.max()!!,linearRegression.R_2)
                         }
                     }
                     //初始化列表
@@ -121,8 +152,9 @@ class ShowResult : AppCompatActivity() {
         }
     }
 
-    private fun drawLine(Slope:Double,Intercept:Double,minX:Double,maxX:Double,a:Double,b:Double,Rsquare:Double){
-        val mydata = ArrayList<Pair<Double, Double>>()
+    private fun drawChart(Slope:Double, Intercept:Double, minX:Double, maxX:Double, R_square:Double){
+        val myLineData = ArrayList<Pair<Double, Double>>()
+
         val minx=minX
         val maxx=maxX
         val slope=Slope
@@ -133,20 +165,36 @@ class ShowResult : AppCompatActivity() {
             startX=(minx-0.2*minx)
         }
         val endX=(maxx+0.2* maxx)
-        mydata.add(Pair(startX,startX*slope+intercept))
-        mydata.add(Pair(endX,endX*slope+intercept))
-        val entries = ArrayList<Entry>()
-        for (point in mydata) {
-            entries.add(Entry(point.first.toFloat(), point.second.toFloat()))
-        }
-        val df = DecimalFormat("#.###")
-        df.roundingMode = RoundingMode.CEILING
-        val datset = LineDataSet(entries, "a=${df.format(a)},b=${df.format(b)},R^2=${df.format(Rsquare)}")
-        datset.setColor(Color.GREEN)
-        datset.setDrawCircles(false)
+        myLineData.add(Pair(startX,startX*slope+intercept))
+        myLineData.add(Pair(endX,endX*slope+intercept))
+        val lineEntries = ArrayList<Entry>()
+        val dotEntries = ArrayList<Entry>()
 
-        val linedata = LineData(datset)
-        chart.data = linedata
+        for (point in myLineData) {
+            lineEntries.add(Entry(point.first.toFloat(), point.second.toFloat()))
+        }
+       bubsort(myDotData)
+        for (dot in myDotData){
+            dotEntries.add(Entry(dot.first.toFloat(),dot.second.toFloat()))
+        }
+        val df = DecimalFormat("#.#######")
+        df.roundingMode = RoundingMode.CEILING
+        val lineDataSet = LineDataSet(lineEntries, "a=${df.format(slope)},b=${df.format(intercept)},R^2=${df.format(R_square)}")
+        val dotDataSet = ScatterDataSet(dotEntries,"")
+        lineDataSet.setColor(Color.GREEN)
+        dotDataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE)
+        dotDataSet.scatterShapeSize=10f
+        dotDataSet.isHighlightEnabled=false
+        dotDataSet.color=(Color.RED)
+        lineDataSet.setDrawCircles(false)
+
+
+        val combinedData=CombinedData()
+        val lineData=LineData(lineDataSet)
+        val scatterData = ScatterData(dotDataSet)
+        combinedData.setData(lineData)
+        combinedData.setData(scatterData)
+        chart.data=combinedData
         chart.invalidate()
     }
 
@@ -167,9 +215,9 @@ class ShowResult : AppCompatActivity() {
             DeleteWindow(position)
             true
         }
-        //设置图表View的高
+        //设
         setChartViewSize(chart)
-        //延时一段时间更新UI
+        //
         Timer().schedule(object : TimerTask(){
             override fun run() {
                 sendmessage(0x111)
@@ -203,5 +251,22 @@ class ShowResult : AppCompatActivity() {
             myDao.deleteByGroup(groupList[groupNum])
             sendmessage(0x111)
         }.setNegativeButton("取消"){dialog, which ->  }.create().show()
+    }
+    private fun bubsort(arr: ArrayList<Pair<Double,Double>>){
+        var out = 0
+        var i=0
+
+        while (out<arr.size){
+            i=out+1
+            while (i<arr.size){
+                if (arr[out].first>arr[i].first){
+                    val temp= arr[out]
+                    arr[out]=arr[i]
+                    arr[i]=temp
+                }
+                i++
+            }
+            out++
+        }
     }
 }

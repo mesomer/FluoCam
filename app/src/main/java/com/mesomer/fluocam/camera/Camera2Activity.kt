@@ -221,6 +221,9 @@ class Camera2Activity : AppCompatActivity() {
                     myDao!!.insertPhoto(phtoto)
                 }
             }
+            else{
+
+            }
         }, imageReaderHandler)
         /**
         val largestRaw = Collections.max(listOf(*map.getOutputSizes(ImageFormat.RAW_SENSOR)), ComparaSizesByArea())
@@ -238,8 +241,7 @@ class Camera2Activity : AppCompatActivity() {
             }
         },imageReaderHandler)
         **/
-
-    }
+     }
 
     private class ComparaSizesByArea : Comparator<Size> {
         override fun compare(lhs: Size?, rhs: Size?): Int {
@@ -280,9 +282,9 @@ class Camera2Activity : AppCompatActivity() {
         ActivityCompat.requestPermissions(this, REQUIRED_PERMISSIONS, REQUEST_CODE_PERMISSIONS)
         myCameraCharacter = MyCameraCharacter(this@Camera2Activity)
         minISO = myCameraCharacter.lowerISO
-        maxISO = myCameraCharacter.upperISO
+        maxISO = 2000
         minExposure = myCameraCharacter.lowerExposure
-        maxExposure = msTons(1000)
+        maxExposure = msTons(2000)
         seekBar.max=1000
         db = AppDatabase.getAppDataBase(context = this)
         myDao = db?.myDao()

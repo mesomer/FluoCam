@@ -17,7 +17,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".ImageReaderActivity"></activity>
+        <activity android:name=".ParamInputActivity"></activity>
+        <activity android:name=".ImageReaderActivity" />
         <activity
             android:name=".camera.Camera2Activity"
             android:theme="@style/ThemeWithoutActionBar" />
