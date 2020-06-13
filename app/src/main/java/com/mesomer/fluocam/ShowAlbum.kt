@@ -4,8 +4,6 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
-import android.provider.ContactsContract
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
@@ -32,8 +30,9 @@ import kotlin.collections.ArrayList
 private val REQUIRED_PERMISSIONS =
     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 private const val REQUEST_CODE_PERMISSIONS = 15
-private val APPGALLERY=0x111
-private val PHONEGALLERY=0x222
+private const val APPGALLERY=0x111
+private const val  PHONEGALLERY=0x222
+
 class ShowAlbum : AppCompatActivity() {
     private var db: AppDatabase?=null
     private var myDao: MyDAO?=null
@@ -47,7 +46,7 @@ class ShowAlbum : AppCompatActivity() {
         myDao = db?.myDao()
         val photoGrid = findViewById<GridView>(R.id.photogrid)
         if (allPermissionsGranted()) {
-            photoGrid.post { StartShowAlbum() }
+            photoGrid.post { startShowAlbum() }
         } else {
             ActivityCompat.requestPermissions(
                 this,
@@ -65,7 +64,7 @@ class ShowAlbum : AppCompatActivity() {
         if (requestCode == REQUEST_CODE_PERMISSIONS) {
             if (allPermissionsGranted()) {
                 val photoGrid = findViewById<GridView>(R.id.photogrid)
-                photoGrid.post { StartShowAlbum() }
+                photoGrid.post { startShowAlbum() }
             } else {
                 Toast.makeText(
                     this,
@@ -87,11 +86,11 @@ class ShowAlbum : AppCompatActivity() {
         when(item?.itemId){
             APPGALLERY->{
                 showMode=1
-                StartShowAlbum()
+                startShowAlbum()
             }
             PHONEGALLERY->{
                 showMode=2
-                StartShowAlbum()
+                startShowAlbum()
             }
         }
         return super.onOptionsItemSelected(item)
@@ -103,7 +102,7 @@ class ShowAlbum : AppCompatActivity() {
     }
 
     var paths = ArrayList<String>()
-    private fun StartShowAlbum() {
+    private fun startShowAlbum() {
         val adapter = object : BaseAdapter() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
                 //val image = ImageView(this@ShowAlbum)
@@ -126,7 +125,7 @@ class ShowAlbum : AppCompatActivity() {
                 return paths.size
             }
         }
-        GetAllPhoto()
+        getAllPhoto()
         photogrid.adapter = adapter
         photogrid.onItemClickListener =
             AdapterView.OnItemClickListener { _, _, position, _ ->
@@ -139,7 +138,7 @@ class ShowAlbum : AppCompatActivity() {
                         thephoto=photo
                     }
                 }
-                MarkWindow(havePhoto,thephoto)
+                markWindow(havePhoto,thephoto)
             }
         photogrid.onItemLongClickListener=
             AdapterView.OnItemLongClickListener{_, _, position, _ ->
@@ -150,7 +149,7 @@ class ShowAlbum : AppCompatActivity() {
             }
     }
 
-    private fun GetAllPhoto() {
+    private fun getAllPhoto() {
         paths.clear()
         if(showMode==1){
             val cursor = contentResolver.query(
@@ -178,11 +177,11 @@ class ShowAlbum : AppCompatActivity() {
         }
     }
 
-    private fun MarkWindow(havephoto: Boolean,photo: Photo) {
-        val MarkForm = layoutInflater.inflate(R.layout.mark_window, null)
-        val concentrationEdit=MarkForm.concentration
-        val groupEdit=MarkForm.group_num
-        val isStandarRatio=MarkForm.sampletag
+    private fun markWindow(havephoto: Boolean, photo: Photo) {
+        val markForm = layoutInflater.inflate(R.layout.mark_window, null)
+        val concentrationEdit=markForm.concentration
+        val groupEdit=markForm.group_num
+        val isStandarRatio=markForm.sampletag
 
         if (havephoto){
             concentrationEdit.setText(photo.concentration)
@@ -193,17 +192,17 @@ class ShowAlbum : AppCompatActivity() {
                 isStandarRatio.check(R.id.tobetested)
         }
 
-        AlertDialog.Builder(this).setView(MarkForm).setPositiveButton("确认") { dialog, which ->
+        AlertDialog.Builder(this).setView(markForm).setPositiveButton("确认") { dialog, which ->
             if (havephoto){
                 myDao?.updatePhoto(Photo(concentration = concentrationEdit.text.toString(),path=photo.path,name = "",groupID = groupEdit.text.toString(),IsStander = isStandarRatio.checkedRadioButtonId==R.id.tested))
                 Toast.makeText(this@ShowAlbum,"属性已更新",Toast.LENGTH_LONG).show()
-                //待完成
+
             }
             else
                 myDao?.insertPhoto(Photo(concentration = concentrationEdit.text.toString(),path=photo.path,name = "",groupID = groupEdit.text.toString(),IsStander = isStandarRatio.checkedRadioButtonId==R.id.tested))
         }
             .setNegativeButton("取消") { dialog, which ->
-                //取消操作
+
             }.create().show()
     }
 }

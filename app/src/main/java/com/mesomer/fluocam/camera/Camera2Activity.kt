@@ -10,10 +10,7 @@ import android.graphics.SurfaceTexture
 import android.graphics.drawable.ColorDrawable
 import android.hardware.camera2.*
 import android.media.ImageReader
-import android.os.Build
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
+import android.os.*
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
@@ -30,12 +27,13 @@ import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.R
 import com.mesomer.fluocam.data.Photo
 import com.mesomer.fluocam.myview.MySurfaceView
+import com.mesomer.fluocam.science.Conversion
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.properties.Delegates
-
+private const val FILEPATH= "filepath"
 private const val REQUEST_CODE_PERMISSIONS = 10
 private val REQUIRED_PERMISSIONS = arrayOf(
     Manifest.permission.CAMERA,
@@ -51,7 +49,6 @@ class Camera2Activity : AppCompatActivity() {
     private lateinit var prviewRequest: CaptureRequest
     private lateinit var captureSession: CameraCaptureSession
     private lateinit var imageReader: ImageReader
-    //private lateinit var mRawImageReader: ImageReader
     private lateinit var container: RelativeLayout
     private lateinit var manager: CameraManager
     private lateinit var seekBar: SeekBar
@@ -60,8 +57,10 @@ class Camera2Activity : AppCompatActivity() {
     private lateinit var modeBotton:Button
     private lateinit var concentrationEditText:EditText
     private lateinit var groupIdEditText: EditText
+    private lateinit var radio:RadioGroup
+    private lateinit var myThread: MyThread
     private var settedISO=50
-    private var settedEtime=msTons(1)
+    private var settedEtime=Conversion().msTons(1)
     private var manualmod=false
     private var captureMode=true
     private val cameraThread = HandlerThread("CameraThread").apply { start() }
@@ -155,7 +154,6 @@ class Camera2Activity : AppCompatActivity() {
 
         val captureRequestBulder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE)
         captureRequestBulder.addTarget(imageReader.surface)
-       // captureRequestBulder.addTarget(mRawImageReader.surface)
         captureRequestBulder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
         val rotation = windowManager.defaultDisplay.rotation
         captureRequestBulder.set(CaptureRequest.JPEG_ORIENTATION, OREINTATIONS.get(rotation))
@@ -195,52 +193,18 @@ class Camera2Activity : AppCompatActivity() {
             val bytes = ByteArray(buffer.remaining())
             val fileJpg = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.jpg")
             buffer.get(bytes)
-            image.use { _ ->
+            image.use {
                 FileOutputStream(fileJpg).use { output ->
-                    if (groupIdEditText.text.isEmpty()){
-                        Toast.makeText(this,"请输入组名",Toast.LENGTH_SHORT).show()
-                    }
-                    else{
                         output.write(bytes)
                         flashScreen()
-                    }
                 }
             }
-            if (captureMode){
-                if (concentrationEditText.text.isEmpty()){
-                    Toast.makeText(this,"请输入浓度",Toast.LENGTH_SHORT).show()
-                }
-                else {
-                    val phtoto = Photo(
-                        concentration = concentrationEditText.text.toString(),
-                        groupID = groupIdEditText.text.toString(),
-                        IsStander = true,
-                        name = "",
-                        path = fileJpg.path
-                    )
-                    myDao!!.insertPhoto(phtoto)
-                }
-            }
-            else{
-
+            if (captureMode&&groupIdEditText.text.isNotEmpty()&&concentrationEditText.text.isNotEmpty()){
+                sendMessage(0x111,filePath = fileJpg.path)
+            }else if (groupIdEditText.text.isEmpty()||concentrationEditText.text.isEmpty()){
+                Toast.makeText(this,"缺少信息，请手动添加",Toast.LENGTH_SHORT).show()
             }
         }, imageReaderHandler)
-        /**
-        val largestRaw = Collections.max(listOf(*map.getOutputSizes(ImageFormat.RAW_SENSOR)), ComparaSizesByArea())
-        mRawImageReader = ImageReader.newInstance(largestRaw.width,largestRaw.height,ImageFormat.RAW_SENSOR,1)
-
-        mRawImageReader.setOnImageAvailableListener({reader ->
-            val image = reader.acquireNextImage()
-            val buffer = image.planes[0].buffer
-            val bytes = ByteArray(buffer.remaining())
-            val fileRaw = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.dng")
-            image.use { _ ->
-                FileOutputStream(fileRaw).use { output ->
-                    output.write(bytes)
-                }
-            }
-        },imageReaderHandler)
-        **/
      }
 
     private class ComparaSizesByArea : Comparator<Size> {
@@ -275,7 +239,7 @@ class Camera2Activity : AppCompatActivity() {
         container = findViewById(R.id.camera_ui_container)
         seekBar = findViewById(R.id.mySeekbar)
         modeBotton = findViewById(R.id.s_or_t)
-        val radio = findViewById<RadioGroup>(R.id.selecter)
+        radio = findViewById(R.id.selecter)
         concentrationEditText=findViewById(R.id.concentration_text)
         valueNow = findViewById(R.id.lumo)
         groupIdEditText=findViewById(R.id.group_text)
@@ -284,19 +248,21 @@ class Camera2Activity : AppCompatActivity() {
         minISO = myCameraCharacter.lowerISO
         maxISO = 2000
         minExposure = myCameraCharacter.lowerExposure
-        maxExposure = msTons(2000)
+        maxExposure = Conversion().msTons(2000)
         seekBar.max=1000
         db = AppDatabase.getAppDataBase(context = this)
         myDao = db?.myDao()
+        myThread = MyThread()
+        myThread.start()
         seekBar.setOnSeekBarChangeListener(seekBarListener)
-        radio.setOnCheckedChangeListener { group, checkedId ->
+        radio.setOnCheckedChangeListener { _, checkedId ->
             when (checkedId) {
                 R.id.etimeSelected -> {
                     rationStaus = 0
-                    val Etimenow=previewRequsetBuiler.get(CaptureRequest.SENSOR_EXPOSURE_TIME)
-                    textcontent = "Exposure Time :${nsToms(Etimenow)}"
+                    val etimenow=previewRequsetBuiler.get(CaptureRequest.SENSOR_EXPOSURE_TIME)!!
+                    textcontent = "Exposure Time :${Conversion().nsToms(etimenow)}"
                     valueNow.text = textcontent
-                    seekBar.progress=((Etimenow-minExposure)*1000/(maxExposure-minExposure)).toInt()
+                    seekBar.progress=((etimenow-minExposure)*1000/(maxExposure-minExposure)).toInt()
                 }
 
                 R.id.isoSelected -> {
@@ -346,7 +312,7 @@ class Camera2Activity : AppCompatActivity() {
                         manualmod=true
                         settedEtime = minExposure + progress * (maxExposure - minExposure) / 1000
                         previewRequsetBuiler.set(CaptureRequest.SENSOR_EXPOSURE_TIME, settedEtime)
-                        textcontent = "Exposure Time: ${nsToms(settedEtime)}"
+                        textcontent = "Exposure Time: ${Conversion().nsToms(settedEtime)}"
                         valueNow.text = textcontent
                     }
                 }
@@ -403,7 +369,6 @@ class Camera2Activity : AppCompatActivity() {
     companion object {
         private const val ANIMATION_FAST_MILLIS = 50L
         private const val ANIMATION_SLOW_MILLIS = 100L
-        private const val TAG = "Camera2Activity"
         private val OREINTATIONS = SparseIntArray()
 
         init {
@@ -441,12 +406,35 @@ class Camera2Activity : AppCompatActivity() {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun nsToms(nanosecond: Long): Long {
-        return nanosecond / 1000000
+    internal inner class MyThread : Thread(){
+        lateinit var mHandler:Handler
+        override fun run() {
+            Looper.prepare()
+            mHandler= @SuppressLint("HandlerLeak")
+            object : Handler(){
+                override fun handleMessage(msg: Message?) {
+                    super.handleMessage(msg)
+                    if (msg?.what==0x111){
+                        val phtoto = Photo(
+                            concentration = concentrationEditText.text.toString(),
+                            groupID = groupIdEditText.text.toString(),
+                            IsStander = captureMode,
+                            name = "",
+                            path = msg.data.getString(FILEPATH)!!
+                        )
+                        myDao!!.insertPhoto(phtoto)
+                    }
+                }
+            }
+        }
     }
-
-    private fun msTons(msecond: Long): Long {
-        return msecond * 1000000
+    private fun sendMessage(msgnum: Int =0x111, filePath: String) {
+        val msg = Message()
+        msg.what = msgnum
+        val bundle = Bundle()
+        bundle.putString(FILEPATH, filePath)
+        msg.data = bundle
+        myThread.mHandler.sendMessage(msg)
     }
-
 }
+
