@@ -92,6 +92,7 @@
         android:layout_marginEnd="10dp"
         android:layout_marginBottom="10dp"
         android:hint="@string/concentration"
+        android:inputType="number"
         android:textColor="@color/white"
         android:textColorHint="@color/white"
         android:layout_toEndOf="@+id/capture"

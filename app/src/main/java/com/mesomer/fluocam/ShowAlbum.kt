@@ -10,7 +10,10 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.AdapterView
+import android.widget.BaseAdapter
+import android.widget.GridView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -30,13 +33,13 @@ import kotlin.collections.ArrayList
 private val REQUIRED_PERMISSIONS =
     arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE)
 private const val REQUEST_CODE_PERMISSIONS = 15
-private const val APPGALLERY=0x111
-private const val  PHONEGALLERY=0x222
+private const val APPGALLERY = 0x111
+private const val PHONEGALLERY = 0x222
 
 class ShowAlbum : AppCompatActivity() {
-    private var db: AppDatabase?=null
-    private var myDao: MyDAO?=null
-    private var showMode=1
+    private var db: AppDatabase? = null
+    private var myDao: MyDAO? = null
+    private var showMode = 1
     private lateinit var mediaList: MutableList<File>
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -54,6 +57,10 @@ class ShowAlbum : AppCompatActivity() {
                 REQUEST_CODE_PERMISSIONS
             )
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
     }
 
     override fun onRequestPermissionsResult(
@@ -77,24 +84,25 @@ class ShowAlbum : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menu?.add(0, APPGALLERY,2,"内部")
-        menu?.add(0, PHONEGALLERY,1,"外部")
+        menu?.add(0, APPGALLERY, 2, "内部")
+        menu?.add(0, PHONEGALLERY, 1, "外部")
         return super.onCreateOptionsMenu(menu)
     }
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when(item?.itemId){
-            APPGALLERY->{
-                showMode=1
+        when (item?.itemId) {
+            APPGALLERY -> {
+                showMode = 1
                 startShowAlbum()
             }
-            PHONEGALLERY->{
-                showMode=2
+            PHONEGALLERY -> {
+                showMode = 2
                 startShowAlbum()
             }
         }
         return super.onOptionsItemSelected(item)
     }
+
     private fun allPermissionsGranted() = REQUIRED_PERMISSIONS.all {
         ContextCompat.checkSelfPermission(
             baseContext, it
@@ -105,10 +113,10 @@ class ShowAlbum : AppCompatActivity() {
     private fun startShowAlbum() {
         val adapter = object : BaseAdapter() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
-                //val image = ImageView(this@ShowAlbum)
                 val image = MyGridVIew(this@ShowAlbum)
                 val path = paths.get(paths.size - position - 1)
-                Glide.with(this@ShowAlbum).load(File(path)).diskCacheStrategy(DiskCacheStrategy.ALL)
+                Glide.with(this@ShowAlbum).load(File(path))
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
                     .centerCrop().into(image)
                 return image
             }
@@ -129,21 +137,21 @@ class ShowAlbum : AppCompatActivity() {
         photogrid.adapter = adapter
         photogrid.onItemClickListener =
             AdapterView.OnItemClickListener { _, _, position, _ ->
-                val thisphoto=myDao!!.getPhotoByurl(paths[paths.size-position-1])
-                val havePhoto=(thisphoto.size!=0)
-                var thephoto=Photo(paths[paths.size-position-1],"0","0","0",true)
-                Log.i("path","path:"+paths[paths.size-position-1])
-                for (photo in thisphoto){
-                    if (photo.path==paths[paths.size-position-1]){
-                        thephoto=photo
+                val thisphoto = myDao!!.getPhotoByurl(paths[paths.size - position - 1])
+                val havePhoto = (thisphoto.isNotEmpty())
+                var thephoto = Photo(paths[paths.size - position - 1], "0", "0", "0", true)
+                Log.i("path", "path:" + paths[paths.size - position - 1])
+                for (photo in thisphoto) {
+                    if (photo.path == paths[paths.size - position - 1]) {
+                        thephoto = photo
                     }
                 }
-                markWindow(havePhoto,thephoto)
+                markWindow(havePhoto, thephoto)
             }
-        photogrid.onItemLongClickListener=
-            AdapterView.OnItemLongClickListener{_, _, position, _ ->
-                val intent = Intent(this@ShowAlbum,ImageReaderActivity::class.java)
-                intent.putExtra("path",paths[paths.size-position-1])
+        photogrid.onItemLongClickListener =
+            AdapterView.OnItemLongClickListener { _, _, position, _ ->
+                val intent = Intent(this@ShowAlbum, ImageReaderActivity::class.java)
+                intent.putExtra("path", paths[paths.size - position - 1])
                 startActivity(intent)
                 true
             }
@@ -151,7 +159,7 @@ class ShowAlbum : AppCompatActivity() {
 
     private fun getAllPhoto() {
         paths.clear()
-        if(showMode==1){
+        if (showMode == 1) {
             val cursor = contentResolver.query(
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 null,
@@ -161,16 +169,16 @@ class ShowAlbum : AppCompatActivity() {
             )
             while (cursor!!.moveToNext()) {
                 val path = cursor.getString(cursor.getColumnIndex(MediaStore.MediaColumns.DATA))
-                paths.add(path)
+                if (formatJudge(path, "jpg") || formatJudge(path, "jpeg")) {
+                    paths.add(path)
+                }
             }
             cursor.close()
-        }
-        else{
+        } else {
             val rootDirectory = File(externalMediaDirs.first().path)
             mediaList = rootDirectory.listFiles().toMutableList()
-            for (file in mediaList){
-                val end = file.name.substring(file.name.lastIndexOf(".") + 1, file.name.length).toLowerCase(Locale.getDefault())
-                if (end == "jpg"){
+            for (file in mediaList) {
+                if (formatJudge(file, "jpg") || formatJudge(file, "jpeg")) {
                     paths.add(file.path)
                 }
             }
@@ -179,11 +187,11 @@ class ShowAlbum : AppCompatActivity() {
 
     private fun markWindow(havephoto: Boolean, photo: Photo) {
         val markForm = layoutInflater.inflate(R.layout.mark_window, null)
-        val concentrationEdit=markForm.concentration
-        val groupEdit=markForm.group_num
-        val isStandarRatio=markForm.sampletag
+        val concentrationEdit = markForm.concentration
+        val groupEdit = markForm.group_num
+        val isStandarRatio = markForm.sampletag
 
-        if (havephoto){
+        if (havephoto) {
             concentrationEdit.setText(photo.concentration)
             groupEdit.setText(photo.groupID)
             if (photo.IsStander)
@@ -192,17 +200,44 @@ class ShowAlbum : AppCompatActivity() {
                 isStandarRatio.check(R.id.tobetested)
         }
 
-        AlertDialog.Builder(this).setView(markForm).setPositiveButton("确认") { dialog, which ->
-            if (havephoto){
-                myDao?.updatePhoto(Photo(concentration = concentrationEdit.text.toString(),path=photo.path,name = "",groupID = groupEdit.text.toString(),IsStander = isStandarRatio.checkedRadioButtonId==R.id.tested))
-                Toast.makeText(this@ShowAlbum,"属性已更新",Toast.LENGTH_LONG).show()
+        AlertDialog.Builder(this).setView(markForm).setPositiveButton("确认") { _, _ ->
+            if (havephoto) {
+                myDao?.updatePhoto(
+                    Photo(
+                        concentration = concentrationEdit.text.toString(),
+                        path = photo.path,
+                        name = "",
+                        groupID = groupEdit.text.toString(),
+                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested
+                    )
+                )
+                Toast.makeText(this@ShowAlbum, "属性已更新", Toast.LENGTH_LONG).show()
 
-            }
-            else
-                myDao?.insertPhoto(Photo(concentration = concentrationEdit.text.toString(),path=photo.path,name = "",groupID = groupEdit.text.toString(),IsStander = isStandarRatio.checkedRadioButtonId==R.id.tested))
+            } else
+                myDao?.insertPhoto(
+                    Photo(
+                        concentration = concentrationEdit.text.toString(),
+                        path = photo.path,
+                        name = "",
+                        groupID = groupEdit.text.toString(),
+                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested
+                    )
+                )
         }
             .setNegativeButton("取消") { dialog, which ->
 
             }.create().show()
+    }
+
+    private fun formatJudge(file: File, format: String): Boolean {
+        val end = file.name.substring(file.name.lastIndexOf(".") + 1, file.name.length)
+            .toLowerCase(Locale.getDefault())
+        return end == format
+    }
+
+    private fun formatJudge(path: String, format: String): Boolean {
+        val end =
+            path.substring(path.lastIndexOf(".") + 1, path.length).toLowerCase(Locale.getDefault())
+        return end == format
     }
 }

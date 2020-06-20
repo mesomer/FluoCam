@@ -1,14 +1,17 @@
 package com.mesomer.fluocam
 
 import android.annotation.SuppressLint
+import android.content.ContentResolver
 import android.content.Context
 import android.content.SharedPreferences
 import android.graphics.Color
 import android.graphics.Point
+import android.media.MediaScannerConnection
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Message
+import android.provider.MediaStore
 import android.util.Log
 import android.view.View
 import android.widget.ExpandableListView
@@ -22,8 +25,11 @@ import com.mesomer.databasetest.data.AppDatabase
 import com.mesomer.databasetest.data.MyDAO
 import com.mesomer.fluocam.adapter.MyExpandableAdapter
 import com.mesomer.fluocam.camera.RGBmap
+import com.mesomer.fluocam.fileManager.FileDeleter
 import com.mesomer.fluocam.myview.MyRec
 import com.mesomer.fluocam.science.LinearRegression
+import kotlinx.android.synthetic.main.activity_image_reader.*
+import kotlinx.android.synthetic.main.mark_window.*
 import java.io.File
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -134,8 +140,8 @@ class ShowResult : AppCompatActivity() {
                     }
                     if (msg?.what == 0x111) {
                         groupList = myDao.getAllGroupID()
-                        groupArrayList = ArrayList<String>()
-                        sampleArrayList = ArrayList<ArrayList<String>>()
+                        groupArrayList = ArrayList()
+                        sampleArrayList = ArrayList()
 
                         for (groupid in groupList) {
                             groupArrayList.add(groupid)
@@ -225,10 +231,7 @@ class ShowResult : AppCompatActivity() {
         myThread.start()
 
         expandListView.setOnGroupExpandListener { groupPosition ->
-            sendMessage(
-                0x222,
-                groupPosition
-            )
+            sendMessage(0x222, groupPosition)
         }
         expandListView.setOnItemLongClickListener { _, _, position, _ ->
             deleteWindow(position)
@@ -257,7 +260,14 @@ class ShowResult : AppCompatActivity() {
     private fun deleteWindow(groupNum: Int) {
         AlertDialog.Builder(this).setTitle("删除本组").setMessage("删除组：${groupList[groupNum]}?")
             .setPositiveButton("删除") { _, _ ->
+                val toBeDelete=myDao.getPhotoByGroupID(groupList[groupNum])
                 myDao.deleteByGroup(groupList[groupNum])
+                for (photo in toBeDelete){
+                    Log.d("File",photo.path)
+                    val file = File(photo.path)
+                    FileDeleter.deleteFile(file)
+                   MediaScannerConnection.scanFile(this, arrayOf(photo.path), arrayOf("image/jpeg")) { path, uri ->Log.i("File",path+"删除完成")}
+                }
                 sendMessage(0x111)
             }.setNegativeButton("取消") { _, _ -> }.create().show()
     }

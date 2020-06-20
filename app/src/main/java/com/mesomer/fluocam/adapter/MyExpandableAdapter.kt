@@ -10,7 +10,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 //结果活动ExpandList的适配器
 
-class MyExpandableAdapter (activity: Activity,groupList:ArrayList<String>,sampleList:ArrayList<ArrayList<String>>):BaseExpandableListAdapter(){
+class MyExpandableAdapter constructor(activity: Activity,groupList:ArrayList<String>,sampleList:ArrayList<ArrayList<String>>):BaseExpandableListAdapter(){
 
     private var activity:Activity
     private var groupList:ArrayList<String>
@@ -21,6 +21,7 @@ class MyExpandableAdapter (activity: Activity,groupList:ArrayList<String>,sample
         this.groupList=groupList
         this.sampleList=sampleList
     }
+
     private val textView:TextView
         get() {
         val textView =TextView(activity)
