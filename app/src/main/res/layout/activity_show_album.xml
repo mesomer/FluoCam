@@ -5,12 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ShowAlbum">
-        <GridView
-            android:id="@+id/photogrid"
+        <ListView
+            android:id="@+id/albumList"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:horizontalSpacing="2dp"
-            android:verticalSpacing="2dp"
-            android:numColumns="4"
-            android:layout_gravity="center"/>
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            />
 </LinearLayout>

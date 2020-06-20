@@ -8,7 +8,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout as LinearLayout1
 
-class MyGridVIew(context: Context) : androidx.appcompat.widget.AppCompatImageView(context) {
+class MyGridViewContent(context: Context) : androidx.appcompat.widget.AppCompatImageView(context) {
 //正方形自定义GridView
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         setMeasuredDimension(View.getDefaultSize(0,widthMeasureSpec), View.getDefaultSize(0,heightMeasureSpec))

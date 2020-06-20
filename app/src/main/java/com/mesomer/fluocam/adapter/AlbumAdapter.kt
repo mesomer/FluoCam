@@ -1,12 +1,14 @@
 package com.mesomer.fluocam.adapter
 
 import android.app.Activity
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.GridView
 import android.widget.LinearLayout
 import android.widget.TextView
+import com.mesomer.fluocam.myview.MyGridView
 
 class AlbumAdapter constructor(
     _activity: Activity,
@@ -24,38 +26,12 @@ class AlbumAdapter constructor(
         pathAndDataMap = _pathAndDataMap
     }
 
-    // A linearLayout Container
-    private val linearLayout: LinearLayout
-        get() {
-            val linearLayout = LinearLayout(activity)
-            linearLayout.orientation = LinearLayout.VERTICAL
-
-            return linearLayout
-        }
-
-    //To Show the data when the photos were taken
-    private val dataTextView: TextView
-        get() {
-            val textView = TextView(activity)
-            textView.textSize = 20F
-            return textView
-        }
-    //To show photos
-    //its adaper is defined in annother class
-    private val gridView: GridView
-        get() {
-            val gridView = GridView(activity)
-            gridView.numColumns = 4
-            gridView.horizontalSpacing = 2
-            gridView.verticalSpacing = 2
-            return gridView
-        }
-
-
     override fun getView(position: Int, convertView: View?, parent: ViewGroup?): View {
         val dataString=dataSet.elementAt(position)
-        dataTextView.text=dataString
-        gridView.adapter=GridViewAdapter(activity,pathAndDataMap.filter { (_,value)->value==dataString })
+        Log.d("DATA",dataString)
+        val linearLayout=getLinearLayout()
+        val dataTextView=getTextView(dataString)
+        val gridView=MyGridView(activity,pathAndDataMap.filter { (_,value)->value==dataString }).gridView
         linearLayout.addView(dataTextView)
         linearLayout.addView(gridView)
         return linearLayout
@@ -66,10 +42,22 @@ class AlbumAdapter constructor(
     }
 
     override fun getItemId(position: Int): Long {
-        return position.toLong()
+        return 0
     }
 
     override fun getCount(): Int {
         return dataSet.size
     }
+    private fun getLinearLayout():LinearLayout{
+        val linearLayout=LinearLayout(activity)
+        linearLayout.orientation=LinearLayout.VERTICAL
+        return linearLayout
+    }
+    private fun getTextView(dataString:String):TextView{
+        val dataTextView=TextView(activity)
+        dataTextView.textSize=15F
+        dataTextView.text=dataString
+        return dataTextView
+    }
+
 }

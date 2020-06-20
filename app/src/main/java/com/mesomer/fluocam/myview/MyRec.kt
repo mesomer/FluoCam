@@ -15,6 +15,7 @@ class MyRec(centerX: Int, centerY: Int, width: Int, height: Int) {
     private fun getStart(center: Int, length: Int): Int {
 
         if (isOdd(length)) {
+            val a=1
             return center - (length - 1) / 2
         } else
             return center - length / 2
