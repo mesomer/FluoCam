@@ -8,6 +8,8 @@ data class GroupInfo(
     @PrimaryKey(autoGenerate = false)
     val groupId:String,
     val ISO:Int,
-    val exposureTime:Int,
-    val analysisArea:MyRec
+    val exposureTime:Long,
+    val analysisArea:MyRec,
+    val a:Long,
+    val b:Long
 )

@@ -10,13 +10,17 @@ import android.util.Log
 import android.util.Range
 
 class MyCameraCharacter(activity: Activity) {
+        private val manager:CameraManager
+    init {
+         manager = activity.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    }
 
-    private val manager = activity.getSystemService(Context.CAMERA_SERVICE) as CameraManager
     private val characteristics = manager.getCameraCharacteristics("0")
     val upperISO=getISoRange().upper
     val lowerISO=getISoRange().lower
     val upperExposure=getExposureRange().upper
     val lowerExposure=getExposureRange().lower
+    val fpsRange=characteristics.get(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
     fun getHardWareLevel() {
         for (cameraId in manager.cameraIdList) {
             val characteristics = manager.getCameraCharacteristics(cameraId)

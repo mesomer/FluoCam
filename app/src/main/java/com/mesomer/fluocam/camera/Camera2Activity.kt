@@ -4,11 +4,13 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
+import android.graphics.Camera
 import android.graphics.Color
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
 import android.graphics.drawable.ColorDrawable
 import android.hardware.camera2.*
+import android.media.ExifInterface
 import android.media.ImageReader
 import android.os.*
 import android.util.Log
@@ -20,7 +22,6 @@ import android.view.View
 import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.Camera
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.mesomer.databasetest.data.AppDatabase
@@ -31,6 +32,7 @@ import com.mesomer.fluocam.myview.MySurfaceView
 import com.mesomer.fluocam.science.Conversion
 import java.io.File
 import java.io.FileOutputStream
+import java.lang.Exception
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.properties.Delegates
@@ -100,7 +102,7 @@ class Camera2Activity : AppCompatActivity() {
     }
     private val stateCallBack = object : CameraDevice.StateCallback() {
         override fun onOpened(camera: CameraDevice) {
-            this@Camera2Activity.cameraDevice = camera
+            cameraDevice = camera
             createCameraPreviewSession()
             Log.d("Camera2Activity", "createCameraPreviewSession()")
         }
@@ -194,19 +196,22 @@ class Camera2Activity : AppCompatActivity() {
             val image = reader.acquireNextImage()
             val buffer = image.planes[0].buffer
             val bytes = ByteArray(buffer.remaining())
-            val fileJpg = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.jpg")
+            val fileJpg = File(externalMediaDirs.first(), "${getData(System.currentTimeMillis())}.jpeg")
+            val path =fileJpg.path
             buffer.get(bytes)
             image.use {
                 FileOutputStream(fileJpg).use { output ->
                     output.write(bytes)
+                    output.close()
                     flashScreen()
                 }
             }
             if (captureMode && groupIdEditText.text.isNotEmpty() && concentrationEditText.text.isNotEmpty()) {
-                sendMessage(0x111, filePath = fileJpg.path)
+                sendMessage(0x111, filePath = path)
             } else if (groupIdEditText.text.isEmpty() || concentrationEditText.text.isEmpty()) {
                 Toast.makeText(this, "缺少信息，请手动添加", Toast.LENGTH_SHORT).show()
             }
+
         }, imageReaderHandler)
     }
 
@@ -325,12 +330,7 @@ class Camera2Activity : AppCompatActivity() {
         }
 
         override fun onStartTrackingTouch(seekBar: SeekBar?) {
-            previewRequsetBuiler.set(
-                CaptureRequest.CONTROL_AF_TRIGGER,
-                CaptureRequest.CONTROL_AF_TRIGGER_START
-            )
             locked = false
-
         }
 
         override fun onStopTrackingTouch(seekBar: SeekBar?) {
@@ -338,9 +338,6 @@ class Camera2Activity : AppCompatActivity() {
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -348,9 +345,6 @@ class Camera2Activity : AppCompatActivity() {
         imageReaderThread.quitSafely()
     }
 
-    override fun onResume() {
-        super.onResume()
-    }
 
     @SuppressLint("MissingPermission")
     override fun onRestart() {
@@ -359,13 +353,15 @@ class Camera2Activity : AppCompatActivity() {
         manager.openCamera(mCameraId, stateCallBack, null)
     }
 
-    override fun onPause() {
-        super.onPause()
-    }
 
     override fun onStop() {
         super.onStop()
-        cameraDevice.close()
+        try {
+            cameraDevice.close()
+        }catch (e:Exception){
+            Log.e("WTF",e.toString())
+        }
+
     }
 
     companion object {
@@ -421,7 +417,9 @@ class Camera2Activity : AppCompatActivity() {
                                 groupID = groupIdEditText.text.toString(),
                                 IsStander = captureMode,
                                 name = "",
-                                path = msg.data.getString(FILEPATH)!!
+                                path = msg.data.getString(FILEPATH)!!,
+                            Eigenvalues = null,
+                            ExposureTime = settedEtime,ISO = settedISO
                         )
                         Log.d("DB", "入库成功")
                         myDao!!.insertPhoto(phtoto)
@@ -439,7 +437,6 @@ class Camera2Activity : AppCompatActivity() {
         bundle.putString(FILEPATH, filePath)
         msg.data = bundle
         myThread.mHandler.sendMessage(msg)
-
     }
 }
 

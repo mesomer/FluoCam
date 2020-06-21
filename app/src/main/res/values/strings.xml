@@ -8,4 +8,8 @@
     <string name="ExposureTime">曝光时间</string>
     <string name="concentration">浓度(ppb)</string>
     <string name="group">组</string>
+    <string name="canshushezhi">参数设置</string>
+    <string name="guanli">管理</string>
+    <string name="fenxi">分析</string>
+    <string name="paishe">拍摄</string>
 </resources>

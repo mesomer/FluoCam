@@ -96,6 +96,7 @@
         android:textColor="@color/white"
         android:textColorHint="@color/white"
         android:layout_toEndOf="@+id/capture"
+        android:imeOptions="actionDone"
          />
     <EditText
         android:id="@+id/group_text"
@@ -109,6 +110,8 @@
         android:hint="组别"
         android:textColor="@color/white"
         android:textColorHint="@color/white"
-        android:layout_toEndOf="@+id/capture" />
+        android:layout_toEndOf="@+id/capture"
+        android:inputType="text"
+        android:imeOptions="actionDone"/>
 
 </RelativeLayout>

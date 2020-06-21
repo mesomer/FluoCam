@@ -23,7 +23,7 @@ class ParamInputActivity : AppCompatActivity() {
         val recwidthText = findViewById<EditText>(R.id.recwidth)
         val recheightText = findViewById<EditText>(R.id.recheight)
         val updateButton = findViewById<Button>(R.id.update)
-        //查询历史值
+
         preferences = getSharedPreferences(CENTERX, Context.MODE_PRIVATE)
         var centerX = preferences.getInt(CENTERX, 0)
         preferences = getSharedPreferences(CENTERY, Context.MODE_PRIVATE)

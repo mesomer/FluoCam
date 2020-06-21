@@ -14,6 +14,7 @@ import androidx.appcompat.app.AlertDialog
 import kotlinx.android.synthetic.main.mark_window.view.*
 
 class MyGridView (_activity: Activity,_paths: Map<String, String>){
+
     private var activity:Activity
     private var paths:Map<String, String>
     private var db: AppDatabase?
@@ -37,7 +38,7 @@ class MyGridView (_activity: Activity,_paths: Map<String, String>){
             val thepath=paths.keys.elementAt(position)
             val thisphoto = myDao!!.getPhotoByurl(thepath)
             val havePhoto = (thisphoto.isNotEmpty())
-            var thephoto = Photo(thepath, "0", "0", "0", true)
+            var thephoto = Photo(thepath, "0", "0", "0", true,null,null,null)
             Log.i("path", "path:$thephoto")
             for (photo in thisphoto) {
                 if (photo.path == thepath) {
@@ -71,7 +72,8 @@ class MyGridView (_activity: Activity,_paths: Map<String, String>){
                         path = photo.path,
                         name = "",
                         groupID = groupEdit.text.toString(),
-                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested
+                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested,
+                        Eigenvalues = null, ExposureTime = null, ISO = null
                     )
                 )
                 Toast.makeText(activity, "属性已更新", Toast.LENGTH_LONG).show()
@@ -83,7 +85,10 @@ class MyGridView (_activity: Activity,_paths: Map<String, String>){
                         path = photo.path,
                         name = "",
                         groupID = groupEdit.text.toString(),
-                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested
+                        IsStander = isStandarRatio.checkedRadioButtonId == R.id.tested,
+                        Eigenvalues = null,
+                        ExposureTime = null,
+                        ISO = null
                     )
                 )
         }

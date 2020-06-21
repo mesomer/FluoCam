@@ -16,7 +16,7 @@ class ImageReaderActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_image_reader)
         val imageView=findViewById<MyImageView>(R.id.image)
-        var path:String=""
+        var path=""
         try {
             path = intent.getStringExtra("path")
             Log.i("ImageReaderPath",path)
