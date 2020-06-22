@@ -83,4 +83,46 @@
             android:gravity="center"
             android:text="参数" />
     </GridLayout>
+    <ImageView
+        android:id="@+id/spline"
+        android:layout_width="match_parent"
+        android:layout_height="1.5dp"
+        android:background="@color/FluroGreen"
+        android:layout_below="@+id/roottext" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/spline"
+        android:gravity="center_horizontal"
+        android:layout_marginTop="10pt"
+        >
+    <Spinner
+        android:id="@+id/elmentText"
+        android:layout_width="20pt"
+        android:layout_marginStart="10pt"
+        android:layout_height="wrap_content"
+        android:spinnerMode="dropdown"/>
+        <EditText
+            android:id="@+id/ppb"
+            android:layout_width="50pt"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10pt"
+            android:hint="ppb"
+            android:inputType="number"
+            android:gravity="center_horizontal"
+            android:imeOptions="actionGo"
+            android:background="@null"
+            />
+        <EditText
+            android:id="@+id/uM"
+            android:layout_width="50pt"
+            android:layout_height="match_parent"
+            android:layout_marginStart="10pt"
+            android:inputType="number"
+            android:hint="uM"
+            android:imeOptions="actionGo"
+            android:gravity="center_horizontal"
+            android:background="@null"
+            />
+    </LinearLayout>
 </RelativeLayout>
